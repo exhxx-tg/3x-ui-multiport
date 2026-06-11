@@ -19,6 +19,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/config"
 	"github.com/mhsanaei/3x-ui/v3/logger"
 	"github.com/mhsanaei/3x-ui/v3/util/common"
+	"github.com/mhsanaei/3x-ui/v3/xraytype"
 )
 
 // GetBinaryName returns the Xray binary filename for the current OS and architecture.
@@ -107,7 +108,7 @@ type Process struct {
 }
 
 // NewProcess creates a new Xray process and sets up cleanup on garbage collection.
-func NewProcess(xrayConfig *Config) *Process {
+func NewProcess(xrayConfig *xraytype.Config) *Process {
 	p := &Process{newProcess(xrayConfig)}
 	runtime.SetFinalizer(p, stopProcess)
 	return p
@@ -116,7 +117,7 @@ func NewProcess(xrayConfig *Config) *Process {
 // NewTestProcess creates a new Xray process that uses a specific config file path.
 // Used for test runs (e.g. outbound test) so the main config.json is not overwritten.
 // The config file at configPath is removed when the process is stopped.
-func NewTestProcess(xrayConfig *Config, configPath string) *Process {
+func NewTestProcess(xrayConfig *xraytype.Config, configPath string) *Process {
 	p := &Process{newTestProcess(xrayConfig, configPath)}
 	runtime.SetFinalizer(p, stopProcess)
 	return p
@@ -138,7 +139,7 @@ type process struct {
 	nodeOnlineClients map[int][]string
 	onlineMu          sync.RWMutex
 
-	config     *Config
+	config     *xraytype.Config
 	configPath string // if set, use this path instead of GetConfigPath() and remove on Stop
 	logWriter  *LogWriter
 	exitErr    error
@@ -153,7 +154,7 @@ var (
 )
 
 // newProcess creates a new internal process struct for Xray.
-func newProcess(config *Config) *process {
+func newProcess(config *xraytype.Config) *process {
 	return &process{
 		version:   "Unknown",
 		config:    config,
@@ -163,7 +164,7 @@ func newProcess(config *Config) *process {
 }
 
 // newTestProcess creates a process that writes and runs with a specific config path.
-func newTestProcess(config *Config, configPath string) *process {
+func newTestProcess(config *xraytype.Config, configPath string) *process {
 	p := newProcess(config)
 	p.configPath = configPath
 	return p
@@ -211,7 +212,7 @@ func (p *Process) GetAPIPort() int {
 }
 
 // GetConfig returns the configuration used by the Xray process.
-func (p *Process) GetConfig() *Config {
+func (p *Process) GetConfig() *xraytype.Config {
 	return p.config
 }
 

@@ -4,10 +4,11 @@ import (
 	"testing"
 
 	"github.com/mhsanaei/3x-ui/v3/util/json_util"
+	"github.com/mhsanaei/3x-ui/v3/xraytype"
 )
 
-func makeConfig() *Config {
-	return &Config{
+func makeConfig() *xraytype.Config {
+	return &xraytype.Config{
 		LogConfig:       json_util.RawMessage(`{"loglevel":"warning"}`),
 		RouterConfig:    json_util.RawMessage(`{}`),
 		OutboundConfigs: json_util.RawMessage(`[]`),
@@ -15,7 +16,7 @@ func makeConfig() *Config {
 		API:             json_util.RawMessage(`{}`),
 		Stats:           json_util.RawMessage(`{}`),
 		Metrics:         json_util.RawMessage(`{}`),
-		InboundConfigs: []InboundConfig{
+		InboundConfigs: []xraytype.InboundConfig{
 			{
 				Port:     1080,
 				Protocol: "vless",
@@ -38,7 +39,7 @@ func TestConfigEquals_IdenticalConfigs(t *testing.T) {
 func TestConfigEquals_DifferentInboundCount(t *testing.T) {
 	a := makeConfig()
 	b := makeConfig()
-	b.InboundConfigs = append(b.InboundConfigs, InboundConfig{Port: 2080, Protocol: "vmess", Tag: "inbound-2080"})
+	b.InboundConfigs = append(b.InboundConfigs, xraytype.InboundConfig{Port: 2080, Protocol: "vmess", Tag: "inbound-2080"})
 	if a.Equals(b) {
 		t.Fatal("configs with different inbound counts should not be Equals")
 	}
@@ -65,7 +66,7 @@ func TestConfigEquals_DifferentLogConfig(t *testing.T) {
 func TestConfigEquals_RawSectionsCompared(t *testing.T) {
 	fields := []struct {
 		name    string
-		mutator func(c *Config)
+		mutator func(c *xraytype.Config)
 	}{
 		{"RouterConfig", func(c *Config) { c.RouterConfig = json_util.RawMessage(`{"changed":true}`) }},
 		{"DNSConfig", func(c *Config) { c.DNSConfig = json_util.RawMessage(`{"servers":["1.1.1.1"]}`) }},

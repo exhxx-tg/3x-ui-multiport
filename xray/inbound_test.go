@@ -4,10 +4,11 @@ import (
 	"testing"
 
 	"github.com/mhsanaei/3x-ui/v3/util/json_util"
+	"github.com/mhsanaei/3x-ui/v3/xraytype"
 )
 
-func makeInbound() InboundConfig {
-	return InboundConfig{
+func makeInbound() xraytype.InboundConfig {
+	return xraytype.InboundConfig{
 		Listen:         json_util.RawMessage(`"0.0.0.0"`),
 		Port:           1234,
 		Protocol:       "vless",
@@ -29,7 +30,7 @@ func TestInboundConfigEquals_Identical(t *testing.T) {
 func TestInboundConfigEquals_MutationsBreakEquality(t *testing.T) {
 	cases := []struct {
 		name    string
-		mutator func(c *InboundConfig)
+		mutator func(c *xraytype.InboundConfig)
 	}{
 		{"Listen", func(c *InboundConfig) { c.Listen = json_util.RawMessage(`"127.0.0.1"`) }},
 		{"Port", func(c *InboundConfig) { c.Port = 9999 }},
