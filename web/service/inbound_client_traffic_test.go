@@ -41,15 +41,15 @@ func TestAddClientTraffic_MatchesDespiteStaleInboundId(t *testing.T) {
 		t.Fatalf("create node inbound: %v", err)
 	}
 
-	if err := db.Create(&xray.ClientTraffic{InboundId: 9999, Email: localEmail, Enable: true}).Error; err != nil {
+	if err := db.Create(&xraytype.ClientTraffic{InboundId: 9999, Email: localEmail, Enable: true}).Error; err != nil {
 		t.Fatalf("create stale local client_traffics: %v", err)
 	}
-	if err := db.Create(&xray.ClientTraffic{InboundId: nodeInbound.Id, Email: nodeEmail, Enable: true}).Error; err != nil {
+	if err := db.Create(&xraytype.ClientTraffic{InboundId: nodeInbound.Id, Email: nodeEmail, Enable: true}).Error; err != nil {
 		t.Fatalf("create node client_traffics: %v", err)
 	}
 
 	svc := InboundService{}
-	err := svc.addClientTraffic(db, []*xray.ClientTraffic{
+	err := svc.addClientTraffic(db, []*xraytype.ClientTraffic{
 		{Email: localEmail, Up: 10, Down: 20},
 		{Email: nodeEmail, Up: 30, Down: 40},
 	})
@@ -57,8 +57,8 @@ func TestAddClientTraffic_MatchesDespiteStaleInboundId(t *testing.T) {
 		t.Fatalf("addClientTraffic: %v", err)
 	}
 
-	var local xray.ClientTraffic
-	if err := db.Model(xray.ClientTraffic{}).Where("email = ?", localEmail).First(&local).Error; err != nil {
+	var local xraytype.ClientTraffic
+	if err := db.Model(xraytype.ClientTraffic{}).Where("email = ?", localEmail).First(&local).Error; err != nil {
 		t.Fatalf("reload local row: %v", err)
 	}
 	if local.Up != 10 || local.Down != 20 {
@@ -68,8 +68,8 @@ func TestAddClientTraffic_MatchesDespiteStaleInboundId(t *testing.T) {
 		t.Errorf("stale-pointer local row LastOnline not set")
 	}
 
-	var node xray.ClientTraffic
-	if err := db.Model(xray.ClientTraffic{}).Where("email = ?", nodeEmail).First(&node).Error; err != nil {
+	var node xraytype.ClientTraffic
+	if err := db.Model(xraytype.ClientTraffic{}).Where("email = ?", nodeEmail).First(&node).Error; err != nil {
 		t.Fatalf("reload node row: %v", err)
 	}
 	if node.Up != 0 || node.Down != 0 {

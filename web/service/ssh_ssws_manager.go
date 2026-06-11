@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os/exec"
 	"regexp"
-	"strings"
 )
 
 // SshSswsManager handles the interaction with the host OS for managing SSH and SSWS users/configs.

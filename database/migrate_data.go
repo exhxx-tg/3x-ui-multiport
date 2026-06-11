@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/mhsanaei/3x-ui/v3/database/model"
-	"github.com/mhsanaei/3x-ui/v3/xray"
+	"github.com/mhsanaei/3x-ui/v3/xraytype"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
@@ -31,7 +31,7 @@ func migrationModels() []any {
 		&model.Node{},
 		&model.ApiToken{},
 		&model.Inbound{},
-		&xray.ClientTraffic{},
+		&xraytype.ClientTraffic{},
 		&model.OutboundTraffics{},
 		&model.InboundClientIps{},
 		&model.ClientRecord{},

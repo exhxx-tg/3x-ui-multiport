@@ -17,6 +17,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/database/model"
 	"github.com/mhsanaei/3x-ui/v3/logger"
 	"github.com/mhsanaei/3x-ui/v3/xray"
+	"github.com/mhsanaei/3x-ui/v3/xraytype"
 )
 
 // IPWithTimestamp tracks an IP address with its last seen timestamp
@@ -582,7 +583,7 @@ func getAPIPortFromConfigPath(configPath string) (int, error) {
 }
 
 func getAPIPortFromConfigData(configData []byte) (int, error) {
-	xrayConfig := &xray.Config{}
+	xrayConfig := &xraytype.Config{}
 	if err := json.Unmarshal(configData, xrayConfig); err != nil {
 		return 0, err
 	}

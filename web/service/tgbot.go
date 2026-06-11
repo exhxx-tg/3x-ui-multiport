@@ -30,6 +30,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/web/global"
 	"github.com/mhsanaei/3x-ui/v3/web/locale"
 	"github.com/mhsanaei/3x-ui/v3/xray"
+	"github.com/mhsanaei/3x-ui/v3/xraytype"
 
 	"github.com/mymmrac/telego"
 	th "github.com/mymmrac/telego/telegohandler"
@@ -2924,7 +2925,7 @@ func (t *Tgbot) getInboundClients(id int) (*telego.InlineKeyboardMarkup, error) 
 
 // clientInfoMsg formats client information message based on traffic and flags.
 func (t *Tgbot) clientInfoMsg(
-	traffic *xray.ClientTraffic,
+	traffic *xraytype.ClientTraffic,
 	printEnabled bool,
 	printOnline bool,
 	printActive bool,
@@ -3322,9 +3323,9 @@ func (t *Tgbot) getExhausted(chatId int64) {
 	exDiff := int64(0)
 	now := time.Now().Unix() * 1000
 	var exhaustedInbounds []model.Inbound
-	var exhaustedClients []xray.ClientTraffic
+	var exhaustedClients []xraytype.ClientTraffic
 	var disabledInbounds []model.Inbound
-	var disabledClients []xray.ClientTraffic
+	var disabledClients []xraytype.ClientTraffic
 
 	TrafficThreshold, err := t.settingService.GetTrafficDiff()
 	if err == nil && TrafficThreshold > 0 {
@@ -3442,8 +3443,8 @@ func (t *Tgbot) notifyExhausted() {
 						if client.TgID != 0 {
 							chatID := client.TgID
 							if !int64Contains(chatIDsDone, chatID) && !checkAdmin(chatID) {
-								var disabledClients []xray.ClientTraffic
-								var exhaustedClients []xray.ClientTraffic
+								var disabledClients []xraytype.ClientTraffic
+								var exhaustedClients []xraytype.ClientTraffic
 								traffics, err := t.inboundService.GetClientTrafficTgBot(client.TgID)
 								if err == nil && len(traffics) > 0 {
 									var output strings.Builder

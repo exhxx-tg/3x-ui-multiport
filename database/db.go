@@ -20,7 +20,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/database/model"
 	"github.com/mhsanaei/3x-ui/v3/util/crypto"
 	"github.com/mhsanaei/3x-ui/v3/util/random"
-	"github.com/mhsanaei/3x-ui/v3/xray"
+	"github.com/mhsanaei/3x-ui/v3/xraytype"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
@@ -63,7 +63,7 @@ func initModels() error {
 		&model.OutboundTraffics{},
 		&model.Setting{},
 		&model.InboundClientIps{},
-		&xray.ClientTraffic{},
+		&xraytype.ClientTraffic{},
 		&model.HistoryOfSeeders{},
 		&model.CustomGeoResource{},
 		&model.Node{},

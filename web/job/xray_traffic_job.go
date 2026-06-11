@@ -7,6 +7,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/web/service"
 	"github.com/mhsanaei/3x-ui/v3/web/websocket"
 	"github.com/mhsanaei/3x-ui/v3/xray"
+	"github.com/mhsanaei/3x-ui/v3/xraytype"
 
 	"github.com/valyala/fasthttp"
 )
@@ -111,7 +112,7 @@ func (j *XrayTrafficJob) Run() {
 	}
 }
 
-func (j *XrayTrafficJob) informTrafficToExternalAPI(inboundTraffics []*xray.Traffic, clientTraffics []*xray.ClientTraffic) {
+func (j *XrayTrafficJob) informTrafficToExternalAPI(inboundTraffics []*xray.Traffic, clientTraffics []*xraytype.ClientTraffic) {
 	informURL, err := j.settingService.GetExternalTrafficInformURI()
 	if err != nil {
 		logger.Warning("get ExternalTrafficInformURI failed:", err)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/mhsanaei/3x-ui/v3/database"
 	"github.com/mhsanaei/3x-ui/v3/web/entity"
+	"github.com/mhsanaei/3x-ui/v3/util/json_util"
 	"github.com/mhsanaei/3x-ui/v3/xraytype"
 )
 
@@ -76,7 +77,7 @@ func InjectExtraProtocolsFallbacks(config *xraytype.Config) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal updated streamSettings: %w", err)
 	}
-	targetInbound.StreamSettings = string(updatedStream)
+	targetInbound.StreamSettings = json_util.RawMessage(updatedStream)
 
 	return nil
 }

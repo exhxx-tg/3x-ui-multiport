@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -34,7 +33,7 @@ func (c *ExtraProtocolsController) initRouter(g *gin.RouterGroup) {
 
 func (c *ExtraProtocolsController) GetUsers(ctx *gin.Context) {
 	users, err := c.service.GetUsers()
-	jsonObj(ctx, "get users success", users, err)
+	jsonObj(ctx, users, err)
 }
 
 func (c *ExtraProtocolsController) AddUser(ctx *gin.Context) {
@@ -87,7 +86,7 @@ func (c *ExtraProtocolsController) DeleteUser(ctx *gin.Context) {
 
 func (c *ExtraProtocolsController) GetSettings(ctx *gin.Context) {
 	settings, err := c.service.GetSettings()
-	jsonObj(ctx, "get settings success", settings, err)
+	jsonObj(ctx, settings, err)
 }
 
 func (c *ExtraProtocolsController) UpdateSetting(ctx *gin.Context) {

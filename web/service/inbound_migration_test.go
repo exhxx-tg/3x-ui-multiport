@@ -60,7 +60,7 @@ func TestMigrationRequirements_BackfillsClientTrafficsWithMultiDomainInbound(t *
 	}
 
 	var before int64
-	if err := db.Model(xray.ClientTraffic{}).Count(&before).Error; err != nil {
+	if err := db.Model(xraytype.ClientTraffic{}).Count(&before).Error; err != nil {
 		t.Fatalf("count client_traffics before: %v", err)
 	}
 	if before != 0 {
@@ -74,8 +74,8 @@ func TestMigrationRequirements_BackfillsClientTrafficsWithMultiDomainInbound(t *
 	// Before the fix this was rolled back whenever the externalProxy detection query
 	// errored (it does on Postgres via json_extract), so the MultiDomain inbound below
 	// is deliberately present to make that query return rows and run to completion.
-	var ct xray.ClientTraffic
-	if err := db.Model(xray.ClientTraffic{}).Where("email = ?", backfillEmail).First(&ct).Error; err != nil {
+	var ct xraytype.ClientTraffic
+	if err := db.Model(xraytype.ClientTraffic{}).Where("email = ?", backfillEmail).First(&ct).Error; err != nil {
 		t.Fatalf("client_traffics row not backfilled for %s: %v", backfillEmail, err)
 	}
 

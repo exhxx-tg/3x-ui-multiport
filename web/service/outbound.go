@@ -16,6 +16,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/logger"
 	"github.com/mhsanaei/3x-ui/v3/util/json_util"
 	"github.com/mhsanaei/3x-ui/v3/xray"
+	"github.com/mhsanaei/3x-ui/v3/xraytype"
 
 	"gorm.io/gorm"
 )
@@ -29,7 +30,7 @@ type OutboundService struct{}
 // dial-only and don't need the semaphore.
 var httpTestSemaphore sync.Mutex
 
-func (s *OutboundService) AddTraffic(traffics []*xray.Traffic, clientTraffics []*xray.ClientTraffic) (error, bool) {
+func (s *OutboundService) AddTraffic(traffics []*xray.Traffic, clientTraffics []*xraytype.ClientTraffic) (error, bool) {
 	var err error
 	db := database.GetDB()
 	tx := db.Begin()
@@ -401,7 +402,7 @@ func (s *OutboundService) testOutboundHTTP(outboundJSON string, testURL string, 
 // is wired to probe the target tag, and a metrics listener exposes the
 // observatory snapshot via /debug/vars. No inbound or routing rules are
 // needed — burstObservatory issues the probe traffic itself.
-func (s *OutboundService) createTestConfig(outboundTag string, allOutbounds []any, metricsPort int, probeURL string) *xray.Config {
+func (s *OutboundService) createTestConfig(outboundTag string, allOutbounds []any, metricsPort int, probeURL string) *xraytype.Config {
 	processedOutbounds := make([]any, len(allOutbounds))
 	for i, ob := range allOutbounds {
 		outbound, ok := ob.(map[string]any)
@@ -449,9 +450,9 @@ func (s *OutboundService) createTestConfig(outboundTag string, allOutbounds []an
 	}
 	logJSON, _ := json.Marshal(logConfig)
 
-	cfg := &xray.Config{
+	cfg := &xraytype.Config{
 		LogConfig:        json_util.RawMessage(logJSON),
-		InboundConfigs:   []xray.InboundConfig{},
+		InboundConfigs:   []xraytype.InboundConfig{},
 		OutboundConfigs:  json_util.RawMessage(string(outboundsJSON)),
 		RouterConfig:     json_util.RawMessage(string(routingJSON)),
 		Policy:           json_util.RawMessage(`{}`),

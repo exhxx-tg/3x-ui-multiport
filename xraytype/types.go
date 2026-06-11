@@ -19,6 +19,7 @@ type Config struct {
 	Metrics         json_util.RawMessage `json:"metrics"`
 	Reverse         json_util.RawMessage `json:"reverse"`
 	FakeDNS         json_util.RawMessage `json:"fakedns"`
+	BurstObservatory json_util.RawMessage `json:"burstObservatory"`
 	InboundConfigs  []InboundConfig      `json:"inbounds"`
 }
 

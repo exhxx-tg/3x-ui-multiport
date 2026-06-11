@@ -6,7 +6,7 @@ import (
 	"slices"
 
 	"github.com/mhsanaei/3x-ui/v3/util/common"
-	"github.com/mhsanaei/3x-ui/v3/xray"
+	"github.com/mhsanaei/3x-ui/v3/xraytype"
 )
 
 // XraySettingService provides business logic for Xray configuration management.
@@ -32,7 +32,7 @@ func (s *XraySettingService) SaveXraySetting(newXraySettings string) error {
 }
 
 func (s *XraySettingService) CheckXrayConfig(XrayTemplateConfig string) error {
-	xrayConfig := &xray.Config{}
+	xrayConfig := &xraytype.Config{}
 	err := json.Unmarshal([]byte(XrayTemplateConfig), xrayConfig)
 	if err != nil {
 		return common.NewError("xray template config invalid:", err)

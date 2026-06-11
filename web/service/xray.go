@@ -13,6 +13,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/logger"
 	"github.com/mhsanaei/3x-ui/v3/util/json_util"
 	"github.com/mhsanaei/3x-ui/v3/xray"
+	"github.com/mhsanaei/3x-ui/v3/xraytype"
 
 	"go.uber.org/atomic"
 )
@@ -96,13 +97,13 @@ func RemoveIndex(s []any, index int) []any {
 }
 
 // GetXrayConfig retrieves and builds the Xray configuration from settings and inbounds.
-func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
+func (s *XrayService) GetXrayConfig() (*xraytype.Config, error) {
 	templateConfig, err := s.settingService.GetXrayConfigTemplate()
 	if err != nil {
 		return nil, err
 	}
 
-	xrayConfig := &xray.Config{}
+	xrayConfig := &xraytype.Config{}
 	err = json.Unmarshal([]byte(templateConfig), xrayConfig)
 	if err != nil {
 		return nil, err
@@ -305,7 +306,7 @@ func resolveXrayLogPaths(logCfg json_util.RawMessage) json_util.RawMessage {
 }
 
 // GetXrayTraffic fetches the current traffic statistics from the running Xray process.
-func (s *XrayService) GetXrayTraffic() ([]*xray.Traffic, []*xray.ClientTraffic, error) {
+func (s *XrayService) GetXrayTraffic() ([]*xray.Traffic, []*xraytype.ClientTraffic, error) {
 	if !s.IsXrayRunning() {
 		err := errors.New("xray is not running")
 		logger.Debug("Attempted to fetch Xray traffic, but Xray is not running:", err)

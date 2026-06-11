@@ -13,6 +13,7 @@ import (
 
 	"github.com/mhsanaei/3x-ui/v3/logger"
 	"github.com/mhsanaei/3x-ui/v3/util/common"
+	"github.com/mhsanaei/3x-ui/v3/xraytype"
 
 	"github.com/xtls/xray-core/app/proxyman/command"
 	statsService "github.com/xtls/xray-core/app/stats/command"
@@ -280,7 +281,7 @@ func (x *XrayAPI) RemoveUser(inboundTag, email string) error {
 }
 
 // GetTraffic queries traffic statistics from the Xray core, optionally resetting counters.
-func (x *XrayAPI) GetTraffic() ([]*Traffic, []*ClientTraffic, error) {
+func (x *XrayAPI) GetTraffic() ([]*Traffic, []*xraytype.ClientTraffic, error) {
 	if x.grpcClient == nil {
 		return nil, nil, common.NewError("xray api is not initialized")
 	}
@@ -302,7 +303,7 @@ func (x *XrayAPI) GetTraffic() ([]*Traffic, []*ClientTraffic, error) {
 	}
 
 	tagTrafficMap := make(map[string]*Traffic)
-	emailTrafficMap := make(map[string]*ClientTraffic)
+	emailTrafficMap := make(map[string]*xraytype.ClientTraffic)
 
 	for _, stat := range resp.GetStat() {
 		lastValue, ok := x.StatsLastValues[stat.Name]
@@ -349,13 +350,13 @@ func processTraffic(matches []string, value int64, trafficMap map[string]*Traffi
 }
 
 // processClientTraffic updates clientTrafficMap with upload/download values for a client email.
-func processClientTraffic(matches []string, value int64, clientTrafficMap map[string]*ClientTraffic) {
+func processClientTraffic(matches []string, value int64, clientTrafficMap map[string]*xraytype.ClientTraffic) {
 	email := matches[1]
 	isDown := matches[2] == "downlink"
 
 	traffic, ok := clientTrafficMap[email]
 	if !ok {
-		traffic = &ClientTraffic{Email: email}
+		traffic = &xraytype.ClientTraffic{Email: email}
 		clientTrafficMap[email] = traffic
 	}
 

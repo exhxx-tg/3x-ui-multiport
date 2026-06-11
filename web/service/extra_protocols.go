@@ -1,17 +1,15 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 
 	"github.com/mhsanaei/3x-ui/v3/database"
+	"github.com/mhsanaei/3x-ui/v3/logger"
 	"github.com/mhsanaei/3x-ui/v3/util/common"
 	"github.com/mhsanaei/3x-ui/v3/web/entity"
-
-	"gorm.io/gorm"
 )
 
 type ExtraProtocolsService struct {

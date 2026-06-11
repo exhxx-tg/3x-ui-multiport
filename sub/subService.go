@@ -19,7 +19,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/util/common"
 	"github.com/mhsanaei/3x-ui/v3/util/random"
 	"github.com/mhsanaei/3x-ui/v3/web/service"
-	"github.com/mhsanaei/3x-ui/v3/xray"
+	"github.com/mhsanaei/3x-ui/v3/xraytype"
 )
 
 // SubService provides business logic for generating subscription links and managing subscription data.
@@ -89,11 +89,11 @@ func isLoopbackHost(host string) bool {
 }
 
 // GetSubs retrieves subscription links for a given subscription ID and host.
-func (s *SubService) GetSubs(subId string, host string) ([]string, []string, int64, xray.ClientTraffic, error) {
+func (s *SubService) GetSubs(subId string, host string) ([]string, []string, int64, xraytype.ClientTraffic, error) {
 	s.PrepareForRequest(host)
 	var result []string
 	var emails []string
-	var traffic xray.ClientTraffic
+	var traffic xraytype.ClientTraffic
 	var hasEnabledClient bool
 	inbounds, err := s.getInboundsBySubId(subId)
 	if err != nil {
@@ -147,21 +147,21 @@ func (s *SubService) GetSubs(subId string, host string) ([]string, []string, int
 
 // AggregateTrafficByEmails resolves traffic for every email in one
 // query and folds the rows into a single ClientTraffic + lastOnline.
-// xray.ClientTraffic.Email is globally unique, so a multi-inbound
+// xraytype.ClientTraffic.Email is globally unique, so a multi-inbound
 // client's single row is attached to exactly one inbound — iterating
 // per-inbound ClientStats would miss it on the others. Used by GetSubs,
 // SubClashService.GetClash, and SubJsonService.GetJson to keep the
 // sub-info header consistent across all three formats.
-func (s *SubService) AggregateTrafficByEmails(emails []string) (xray.ClientTraffic, int64) {
-	var agg xray.ClientTraffic
+func (s *SubService) AggregateTrafficByEmails(emails []string) (xraytype.ClientTraffic, int64) {
+	var agg xraytype.ClientTraffic
 	var lastOnline int64
 	if len(emails) == 0 {
 		return agg, 0
 	}
 	db := database.GetDB()
-	var rows []xray.ClientTraffic
+	var rows []xraytype.ClientTraffic
 	if err := db.
-		Model(&xray.ClientTraffic{}).
+		Model(&xraytype.ClientTraffic{}).
 		Where("email IN ?", emails).
 		Find(&rows).Error; err != nil {
 		logger.Warning("SubService - AggregateTrafficByEmails: load by email:", err)
@@ -1259,7 +1259,7 @@ func (s *SubService) genRemark(inbound *model.Inbound, email string, extra strin
 
 	if s.showInfo {
 		statsExist := false
-		var stats xray.ClientTraffic
+		var stats xraytype.ClientTraffic
 		for _, clientStat := range inbound.ClientStats {
 			if clientStat.Email == email {
 				stats = clientStat
@@ -1919,7 +1919,7 @@ func (s *SubService) joinPathWithID(basePath, subId string) string {
 
 // BuildPageData parses header and prepares the template view model.
 // BuildPageData constructs page data for rendering the subscription information page.
-func (s *SubService) BuildPageData(subId string, hostHeader string, traffic xray.ClientTraffic, lastOnline int64, subs []string, emails []string, subURL, subJsonURL, subClashURL string, basePath string, subTitle string, subSupportUrl string) PageData {
+func (s *SubService) BuildPageData(subId string, hostHeader string, traffic xraytype.ClientTraffic, lastOnline int64, subs []string, emails []string, subURL, subJsonURL, subClashURL string, basePath string, subTitle string, subSupportUrl string) PageData {
 	download := common.FormatTraffic(traffic.Down)
 	upload := common.FormatTraffic(traffic.Up)
 	total := "∞"

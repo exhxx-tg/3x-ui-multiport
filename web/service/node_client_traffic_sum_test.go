@@ -31,7 +31,7 @@ func createNodeInbound(t *testing.T, db *gorm.DB, nodeID int, tag string, port i
 	}
 }
 
-func syncNode(t *testing.T, svc *InboundService, nodeID int, tag string, stats ...xray.ClientTraffic) {
+func syncNode(t *testing.T, svc *InboundService, nodeID int, tag string, stats ...xraytype.ClientTraffic) {
 	t.Helper()
 	snap := &runtime.TrafficSnapshot{
 		Inbounds: []*model.Inbound{{Tag: tag, ClientStats: stats}},
@@ -41,16 +41,16 @@ func syncNode(t *testing.T, svc *InboundService, nodeID int, tag string, stats .
 	}
 }
 
-func readTraffic(t *testing.T, db *gorm.DB, email string) xray.ClientTraffic {
+func readTraffic(t *testing.T, db *gorm.DB, email string) xraytype.ClientTraffic {
 	t.Helper()
-	var ct xray.ClientTraffic
-	if err := db.Model(xray.ClientTraffic{}).Where("email = ?", email).First(&ct).Error; err != nil {
+	var ct xraytype.ClientTraffic
+	if err := db.Model(xraytype.ClientTraffic{}).Where("email = ?", email).First(&ct).Error; err != nil {
 		t.Fatalf("read client_traffics %q: %v", email, err)
 	}
 	return ct
 }
 
-func assertUpDown(t *testing.T, ct xray.ClientTraffic, wantUp, wantDown int64, when string) {
+func assertUpDown(t *testing.T, ct xraytype.ClientTraffic, wantUp, wantDown int64, when string) {
 	t.Helper()
 	if ct.Up != wantUp || ct.Down != wantDown {
 		t.Errorf("%s: up=%d down=%d, want %d/%d", when, ct.Up, ct.Down, wantUp, wantDown)
@@ -65,13 +65,13 @@ func TestTwoNodesShareEmail_SumsCorrectly(t *testing.T) {
 
 	const email = "shared"
 
-	syncNode(t, svc, 1, "n1-in", xray.ClientTraffic{Email: email, Up: 100, Down: 100, Enable: true})
-	syncNode(t, svc, 2, "n2-in", xray.ClientTraffic{Email: email, Up: 200, Down: 200, Enable: true})
+	syncNode(t, svc, 1, "n1-in", xraytype.ClientTraffic{Email: email, Up: 100, Down: 100, Enable: true})
+	syncNode(t, svc, 2, "n2-in", xraytype.ClientTraffic{Email: email, Up: 200, Down: 200, Enable: true})
 
 	assertUpDown(t, readTraffic(t, db, email), 100, 100, "after baselines")
 
-	syncNode(t, svc, 1, "n1-in", xray.ClientTraffic{Email: email, Up: 150, Down: 150, Enable: true})
-	syncNode(t, svc, 2, "n2-in", xray.ClientTraffic{Email: email, Up: 260, Down: 260, Enable: true})
+	syncNode(t, svc, 1, "n1-in", xraytype.ClientTraffic{Email: email, Up: 150, Down: 150, Enable: true})
+	syncNode(t, svc, 2, "n2-in", xraytype.ClientTraffic{Email: email, Up: 260, Down: 260, Enable: true})
 
 	assertUpDown(t, readTraffic(t, db, email), 210, 210, "after both nodes grow")
 }
@@ -82,10 +82,10 @@ func TestSingleNode_MirrorsCorrectly(t *testing.T) {
 	svc := &InboundService{}
 
 	const email = "solo"
-	syncNode(t, svc, 1, "n1-in", xray.ClientTraffic{Email: email, Up: 500, Down: 600, Enable: true})
+	syncNode(t, svc, 1, "n1-in", xraytype.ClientTraffic{Email: email, Up: 500, Down: 600, Enable: true})
 	assertUpDown(t, readTraffic(t, db, email), 500, 600, "first sync")
 
-	syncNode(t, svc, 1, "n1-in", xray.ClientTraffic{Email: email, Up: 700, Down: 800, Enable: true})
+	syncNode(t, svc, 1, "n1-in", xraytype.ClientTraffic{Email: email, Up: 700, Down: 800, Enable: true})
 	assertUpDown(t, readTraffic(t, db, email), 700, 800, "second sync mirrors cumulative")
 }
 
@@ -99,14 +99,14 @@ func TestUpgrade_PreExistingRow_NoDoubleCount(t *testing.T) {
 	if err := db.Where("tag = ?", "n1-in").First(&ib).Error; err != nil {
 		t.Fatalf("load inbound: %v", err)
 	}
-	if err := db.Create(&xray.ClientTraffic{InboundId: ib.Id, Email: email, Up: 1000, Down: 2000, Enable: true}).Error; err != nil {
+	if err := db.Create(&xraytype.ClientTraffic{InboundId: ib.Id, Email: email, Up: 1000, Down: 2000, Enable: true}).Error; err != nil {
 		t.Fatalf("seed pre-existing row: %v", err)
 	}
 
-	syncNode(t, svc, 1, "n1-in", xray.ClientTraffic{Email: email, Up: 1000, Down: 2000, Enable: true})
+	syncNode(t, svc, 1, "n1-in", xraytype.ClientTraffic{Email: email, Up: 1000, Down: 2000, Enable: true})
 	assertUpDown(t, readTraffic(t, db, email), 1000, 2000, "first snapshot must not double-count")
 
-	syncNode(t, svc, 1, "n1-in", xray.ClientTraffic{Email: email, Up: 1100, Down: 2100, Enable: true})
+	syncNode(t, svc, 1, "n1-in", xraytype.ClientTraffic{Email: email, Up: 1100, Down: 2100, Enable: true})
 	assertUpDown(t, readTraffic(t, db, email), 1100, 2100, "growth after upgrade accrues")
 }
 
@@ -116,11 +116,11 @@ func TestNodeCounterReset_Clamped(t *testing.T) {
 	svc := &InboundService{}
 
 	const email = "restart"
-	syncNode(t, svc, 1, "n1-in", xray.ClientTraffic{Email: email, Up: 900, Down: 900, Enable: true})
-	syncNode(t, svc, 1, "n1-in", xray.ClientTraffic{Email: email, Up: 950, Down: 950, Enable: true})
+	syncNode(t, svc, 1, "n1-in", xraytype.ClientTraffic{Email: email, Up: 900, Down: 900, Enable: true})
+	syncNode(t, svc, 1, "n1-in", xraytype.ClientTraffic{Email: email, Up: 950, Down: 950, Enable: true})
 	assertUpDown(t, readTraffic(t, db, email), 950, 950, "before node reset")
 
-	syncNode(t, svc, 1, "n1-in", xray.ClientTraffic{Email: email, Up: 50, Down: 50, Enable: true})
+	syncNode(t, svc, 1, "n1-in", xraytype.ClientTraffic{Email: email, Up: 50, Down: 50, Enable: true})
 	ct := readTraffic(t, db, email)
 	if ct.Up < 0 || ct.Down < 0 {
 		t.Fatalf("row went negative after node reset: up=%d down=%d", ct.Up, ct.Down)
@@ -135,18 +135,18 @@ func TestCentralReset_NoReAdd(t *testing.T) {
 	svc := &InboundService{}
 
 	const email = "reset"
-	syncNode(t, svc, 1, "n1-in", xray.ClientTraffic{Email: email, Up: 100, Down: 100, Enable: true})
-	syncNode(t, svc, 2, "n2-in", xray.ClientTraffic{Email: email, Up: 100, Down: 100, Enable: true})
-	syncNode(t, svc, 1, "n1-in", xray.ClientTraffic{Email: email, Up: 200, Down: 200, Enable: true})
-	syncNode(t, svc, 2, "n2-in", xray.ClientTraffic{Email: email, Up: 200, Down: 200, Enable: true})
+	syncNode(t, svc, 1, "n1-in", xraytype.ClientTraffic{Email: email, Up: 100, Down: 100, Enable: true})
+	syncNode(t, svc, 2, "n2-in", xraytype.ClientTraffic{Email: email, Up: 100, Down: 100, Enable: true})
+	syncNode(t, svc, 1, "n1-in", xraytype.ClientTraffic{Email: email, Up: 200, Down: 200, Enable: true})
+	syncNode(t, svc, 2, "n2-in", xraytype.ClientTraffic{Email: email, Up: 200, Down: 200, Enable: true})
 
-	if err := db.Model(xray.ClientTraffic{}).Where("email = ?", email).
+	if err := db.Model(xraytype.ClientTraffic{}).Where("email = ?", email).
 		Updates(map[string]any{"up": 0, "down": 0}).Error; err != nil {
 		t.Fatalf("simulate central reset: %v", err)
 	}
 
-	syncNode(t, svc, 1, "n1-in", xray.ClientTraffic{Email: email, Up: 210, Down: 210, Enable: true})
-	syncNode(t, svc, 2, "n2-in", xray.ClientTraffic{Email: email, Up: 205, Down: 205, Enable: true})
+	syncNode(t, svc, 1, "n1-in", xraytype.ClientTraffic{Email: email, Up: 210, Down: 210, Enable: true})
+	syncNode(t, svc, 2, "n2-in", xraytype.ClientTraffic{Email: email, Up: 205, Down: 205, Enable: true})
 
 	assertUpDown(t, readTraffic(t, db, email), 15, 15, "after central reset only increments accrue")
 }
@@ -156,7 +156,7 @@ func TestDelClientStat_CleansNodeBaselines(t *testing.T) {
 	svc := &InboundService{}
 
 	const email = "gone"
-	if err := db.Create(&xray.ClientTraffic{InboundId: 1, Email: email, Enable: true}).Error; err != nil {
+	if err := db.Create(&xraytype.ClientTraffic{InboundId: 1, Email: email, Enable: true}).Error; err != nil {
 		t.Fatalf("seed client_traffics: %v", err)
 	}
 	if err := db.Create(&model.NodeClientTraffic{NodeId: 1, Email: email, Up: 10, Down: 10}).Error; err != nil {

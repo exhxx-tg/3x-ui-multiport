@@ -52,7 +52,7 @@ func runWebServer() {
 	}
 
 	// Initialize and Sync Extra Protocol Daemons
-	service.GetDnsPsiphonManager().SyncAllDaemons()
+	service.GetExtraServicesManager().SyncAllDaemons()
 
 	var server *web.Server
 	server = web.NewServer()

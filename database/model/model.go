@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"strings"
+		"strings"
 
 	"github.com/mhsanaei/3x-ui/v3/util/json_util"
 	"github.com/mhsanaei/3x-ui/v3/xraytype"
@@ -234,7 +234,7 @@ func (i *Inbound) GenXrayInboundConfig() *xraytype.InboundConfig {
 			settings = stripped
 		}
 	}
-	return &xray.InboundConfig{
+	return &xraytype.InboundConfig{
 		Listen:         json_util.RawMessage(listen),
 		Port:           i.Port,
 		Protocol:       protocol,

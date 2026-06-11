@@ -30,7 +30,7 @@ func TestAggregateTrafficByEmails_FallsBackToClientLimits(t *testing.T) {
 	}).Error; err != nil {
 		t.Fatalf("seed client record: %v", err)
 	}
-	if err := db.Create(&xray.ClientTraffic{
+	if err := db.Create(&xraytype.ClientTraffic{
 		Email:      email,
 		Up:         111,
 		Down:       222,
