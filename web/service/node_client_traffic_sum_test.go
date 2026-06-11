@@ -7,7 +7,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/database"
 	"github.com/mhsanaei/3x-ui/v3/database/model"
 	"github.com/mhsanaei/3x-ui/v3/web/runtime"
-	"github.com/mhsanaei/3x-ui/v3/xray"
+	"github.com/mhsanaei/3x-ui/v3/xraytype"
 	"gorm.io/gorm"
 )
 

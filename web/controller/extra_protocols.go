@@ -20,15 +20,12 @@ func NewExtraProtocolsController(g *gin.RouterGroup) *ExtraProtocolsController {
 }
 
 func (c *ExtraProtocolsController) initRouter(g *gin.RouterGroup) {
-	extra := g.Group("/extra")
-	{
-		extra.GET("/users", c.GetUsers)
-		extra.POST("/users", c.AddUser)
-		extra.PUT("/users/:id", c.UpdateUser)
-		extra.DELETE("/users/:id", c.DeleteUser)
-		extra.GET("/settings", c.GetSettings)
-		extra.PUT("/settings", c.UpdateSetting)
-	}
+	g.GET("/users", c.GetUsers)
+	g.POST("/users", c.AddUser)
+	g.PUT("/users/:id", c.UpdateUser)
+	g.DELETE("/users/:id", c.DeleteUser)
+	g.GET("/settings", c.GetSettings)
+	g.PUT("/settings", c.UpdateSetting)
 }
 
 func (c *ExtraProtocolsController) GetUsers(ctx *gin.Context) {

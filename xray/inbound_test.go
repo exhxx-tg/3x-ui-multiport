@@ -32,13 +32,13 @@ func TestInboundConfigEquals_MutationsBreakEquality(t *testing.T) {
 		name    string
 		mutator func(c *xraytype.InboundConfig)
 	}{
-		{"Listen", func(c *InboundConfig) { c.Listen = json_util.RawMessage(`"127.0.0.1"`) }},
-		{"Port", func(c *InboundConfig) { c.Port = 9999 }},
-		{"Protocol", func(c *InboundConfig) { c.Protocol = "vmess" }},
-		{"Settings", func(c *InboundConfig) { c.Settings = json_util.RawMessage(`{"clients":[]}`) }},
-		{"StreamSettings", func(c *InboundConfig) { c.StreamSettings = json_util.RawMessage(`{"network":"ws"}`) }},
-		{"Tag", func(c *InboundConfig) { c.Tag = "inbound-other" }},
-		{"Sniffing", func(c *InboundConfig) { c.Sniffing = json_util.RawMessage(`{"enabled":true}`) }},
+		{"Listen", func(c *xraytype.InboundConfig) { c.Listen = json_util.RawMessage(`"127.0.0.1"`) }},
+		{"Port", func(c *xraytype.InboundConfig) { c.Port = 9999 }},
+		{"Protocol", func(c *xraytype.InboundConfig) { c.Protocol = "vmess" }},
+		{"Settings", func(c *xraytype.InboundConfig) { c.Settings = json_util.RawMessage(`{"clients":[]}`) }},
+		{"StreamSettings", func(c *xraytype.InboundConfig) { c.StreamSettings = json_util.RawMessage(`{"network":"ws"}`) }},
+		{"Tag", func(c *xraytype.InboundConfig) { c.Tag = "inbound-other" }},
+		{"Sniffing", func(c *xraytype.InboundConfig) { c.Sniffing = json_util.RawMessage(`{"enabled":true}`) }},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

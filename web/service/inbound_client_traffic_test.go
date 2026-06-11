@@ -6,7 +6,7 @@ import (
 
 	"github.com/mhsanaei/3x-ui/v3/database"
 	"github.com/mhsanaei/3x-ui/v3/database/model"
-	"github.com/mhsanaei/3x-ui/v3/xray"
+	"github.com/mhsanaei/3x-ui/v3/xraytype"
 )
 
 // TestAddClientTraffic_MatchesDespiteStaleInboundId reproduces the production bug where

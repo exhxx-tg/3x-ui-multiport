@@ -34,6 +34,9 @@ func InjectExtraProtocolsFallbacks(config *xraytype.Config) error {
 	if err := json.Unmarshal(targetInbound.StreamSettings, &streamSettings); err != nil {
 		return fmt.Errorf("failed to unmarshal streamSettings: %w", err)
 	}
+	if streamSettings == nil {
+		streamSettings = make(map[string]any)
+	}
 
 	// Access the fallback list.
 	var fallbacks []map[string]any

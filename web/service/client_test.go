@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/mhsanaei/3x-ui/v3/database/model"
-	"github.com/mhsanaei/3x-ui/v3/xray"
+	"github.com/mhsanaei/3x-ui/v3/xraytype"
 )
 
 func TestClientWithAttachmentsMarshalJSONIncludesExtras(t *testing.T) {

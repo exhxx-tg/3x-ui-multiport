@@ -68,16 +68,16 @@ func TestConfigEquals_RawSectionsCompared(t *testing.T) {
 		name    string
 		mutator func(c *xraytype.Config)
 	}{
-		{"RouterConfig", func(c *Config) { c.RouterConfig = json_util.RawMessage(`{"changed":true}`) }},
-		{"DNSConfig", func(c *Config) { c.DNSConfig = json_util.RawMessage(`{"servers":["1.1.1.1"]}`) }},
-		{"OutboundConfigs", func(c *Config) { c.OutboundConfigs = json_util.RawMessage(`[{"tag":"x"}]`) }},
-		{"Transport", func(c *Config) { c.Transport = json_util.RawMessage(`{"x":1}`) }},
-		{"Policy", func(c *Config) { c.Policy = json_util.RawMessage(`{"levels":{}}`) }},
-		{"API", func(c *Config) { c.API = json_util.RawMessage(`{"tag":"api"}`) }},
-		{"Stats", func(c *Config) { c.Stats = json_util.RawMessage(`{"on":true}`) }},
-		{"Reverse", func(c *Config) { c.Reverse = json_util.RawMessage(`{"bridges":[]}`) }},
-		{"FakeDNS", func(c *Config) { c.FakeDNS = json_util.RawMessage(`[]`) }},
-		{"Metrics", func(c *Config) { c.Metrics = json_util.RawMessage(`{"tag":"m"}`) }},
+		{"RouterConfig", func(c *xraytype.Config) { c.RouterConfig = json_util.RawMessage(`{"changed":true}`) }},
+		{"DNSConfig", func(c *xraytype.Config) { c.DNSConfig = json_util.RawMessage(`{"servers":["1.1.1.1"]}`) }},
+		{"OutboundConfigs", func(c *xraytype.Config) { c.OutboundConfigs = json_util.RawMessage(`[{"tag":"x"}]`) }},
+		{"Transport", func(c *xraytype.Config) { c.Transport = json_util.RawMessage(`{"x":1}`) }},
+		{"Policy", func(c *xraytype.Config) { c.Policy = json_util.RawMessage(`{"levels":{}}`) }},
+		{"API", func(c *xraytype.Config) { c.API = json_util.RawMessage(`{"tag":"api"}`) }},
+		{"Stats", func(c *xraytype.Config) { c.Stats = json_util.RawMessage(`{"on":true}`) }},
+		{"Reverse", func(c *xraytype.Config) { c.Reverse = json_util.RawMessage(`{"bridges":[]}`) }},
+		{"FakeDNS", func(c *xraytype.Config) { c.FakeDNS = json_util.RawMessage(`[]`) }},
+		{"Metrics", func(c *xraytype.Config) { c.Metrics = json_util.RawMessage(`{"tag":"m"}`) }},
 	}
 	for _, f := range fields {
 		t.Run(f.name, func(t *testing.T) {
