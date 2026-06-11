@@ -28,7 +28,7 @@ Unlike standard panels, 3x-ui Extended Edition integrates a unified management s
 Install the panel and all required dependencies (including standalone binaries and system packages) with a single command:
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/exhxx-tg/3x-ui-multiport/main/install.sh)
 ```
 
 ## 🛠️ Configuration
