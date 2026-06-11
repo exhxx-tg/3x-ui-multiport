@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/mhsanaei/3x-ui/v3/util/json_util"
-	"github.com/mhsanaei/3x-ui/v3/xray"
+	"github.com/mhsanaei/3x-ui/v3/xraytype"
 )
 
 // Protocol represents the protocol type for Xray inbounds.
@@ -51,7 +51,7 @@ type Inbound struct {
 	ExpiryTime           int64                `json:"expiryTime" form:"expiryTime"`                                                                                                                                 // Expiration timestamp
 	TrafficReset         string               `json:"trafficReset" form:"trafficReset" gorm:"default:never;index:idx_enable_traffic_reset,priority:2" validate:"omitempty,oneof=never hourly daily weekly monthly"` // Traffic reset schedule
 	LastTrafficResetTime int64                `json:"lastTrafficResetTime" form:"lastTrafficResetTime" gorm:"default:0"`                                                                                            // Last traffic reset timestamp
-	ClientStats          []xray.ClientTraffic `gorm:"foreignKey:InboundId;references:Id" json:"clientStats" form:"clientStats"`                                                                                     // Client traffic statistics
+	ClientStats          []xraytype.ClientTraffic `gorm:"foreignKey:InboundId;references:Id" json:"clientStats" form:"clientStats"`                                                                                     // Client traffic statistics
 
 	// Xray configuration fields
 	Listen         string   `json:"listen" form:"listen"`
@@ -212,7 +212,7 @@ func jsonStringFieldFromRaw(r json.RawMessage) string {
 }
 
 // GenXrayInboundConfig generates an Xray inbound configuration from the Inbound model.
-func (i *Inbound) GenXrayInboundConfig() *xray.InboundConfig {
+func (i *Inbound) GenXrayInboundConfig() *xraytype.InboundConfig {
 	listen := i.Listen
 	if listen == "" {
 		listen = "0.0.0.0"

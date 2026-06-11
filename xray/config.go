@@ -6,11 +6,12 @@ import (
 
 	"github.com/mhsanaei/3x-ui/v3/database"
 	"github.com/mhsanaei/3x-ui/v3/web/entity"
+	"github.com/mhsanaei/3x-ui/v3/xraytype"
 )
 
 // InjectExtraProtocolsFallbacks injects SSH and SSWS fallbacks into the main Xray inbound.
 // It reads the current extra_settings from the database and appends them to the fallback slice.
-func InjectExtraProtocolsFallbacks(config *Config) error {
+func InjectExtraProtocolsFallbacks(config *xraytype.Config) error {
 	db := database.GetDB()
 	var extraSettings []entity.ExtraSetting
 	if err := db.Find(&extraSettings).Error; err != nil {

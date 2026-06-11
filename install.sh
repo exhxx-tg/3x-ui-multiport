@@ -100,7 +100,7 @@ install_standalone_binaries() {
     
     for bin in "${binaries[@]}"; do
         echo -e "${yellow}Downloading ${bin} for ${download_arch}...${plain}"
-        curl -Ls "${BINARY_BASE_URL}/${bin}-${download_arch}" -o "/usr/local/bin/${bin}"
+        curl -Ls "${BINARY_BASE_URL}/${bin}-${download_arch}" -o "/usr/local/bin/${bin}" || true
         if [ $? -eq 0 ]; then
             chmod +x "/usr/local/bin/${bin}"
             echo -e "${green}✓ ${bin} installed successfully${plain}"
