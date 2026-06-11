@@ -1,0 +1,2 @@
+import{Dr as e,Ir as t,Mr as n,Nr as r,kr as i}from"./vendor-D-iwWYkE.js";var a=r({expireDiff:n().optional(),trafficDiff:n().optional(),tgBotEnable:i().optional(),subEnable:i().optional(),subTitle:t().optional(),subURI:t().optional(),subJsonURI:t().optional(),subJsonEnable:i().optional(),subClashURI:t().optional(),subClashEnable:i().optional(),pageSize:n().optional(),remarkModel:t().optional(),datepicker:e([`gregorian`,`jalalian`]).optional(),ipLimitEnable:i().optional()}).loose();export{a as t};
+//# sourceMappingURL=defaults-2FUMott1.js.map

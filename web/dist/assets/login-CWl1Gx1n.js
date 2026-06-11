@@ -1,0 +1,2 @@
+import{Ir as e,Nr as t}from"./vendor-D-iwWYkE.js";var n=t({username:e().min(1,`username`),password:e().min(1,`password`),twoFactorCode:e().optional()}),r=e().min(1,`twoFactorCode`),i=e().regex(/^\d{6}$/,`pages.settings.security.twoFactorModalError`);export{i as n,r,n as t};
+//# sourceMappingURL=login-CWl1Gx1n.js.map
