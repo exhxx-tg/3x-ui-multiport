@@ -119,6 +119,10 @@ setup_extra_env() {
         echo "Welcome to 3x-ui Multi-Protocol Server" > /etc/issue.net
         echo -e "${green}✓ Initialized /etc/issue.net${plain}"
     fi
+
+    # Ensure x-ui command links to the management script, not the binary
+    ln -sf /usr/local/x-ui/x-ui.sh /usr/bin/x-ui
+    echo -e "${green}✓ Configured x-ui terminal shortcut${plain}"
 }
 # --- END EXTRA PROTOCOLS SETUP ---
 

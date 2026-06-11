@@ -140,7 +140,7 @@ func (m *ExtraServicesManager) generateConfigFile(protocol string, port int, use
 		content = m.buildSlowDnsConfig(port, users)
 	case "Psiphon":
 		content = m.buildPsiphonConfig(port, users)
-	case "Stunnel":
+	case "SSL (Stunnel)":
 		content = m.buildStunnelConfig(port)
 	case "OpenVPN":
 		content = m.buildOpenVpnConfig(port)
@@ -149,7 +149,7 @@ func (m *ExtraServicesManager) generateConfigFile(protocol string, port int, use
 	case "OHP":
 		content = m.buildOhpConfig(port)
 	default:
-		return "", nil // No config file needed for some protocols (e.g. BadVPN, Dropbear might use flags)
+		return "", nil // No config file needed for some protocols (e.g. UDP Custom (BadVPN), Dropbear might use flags)
 	}
 
 	tmpPath := filePath + ".tmp"
@@ -205,11 +205,11 @@ func (m *ExtraServicesManager) getBinaryPath(protocol string) string {
 		return "/usr/local/bin/slow-dns"
 	case "Psiphon":
 		return "/usr/local/bin/psiphon-server"
-	case "BadVPN":
+	case "UDP Custom (BadVPN)":
 		return "/usr/local/bin/badvpn-udpgw"
 	case "Dropbear":
 		return "/usr/local/bin/dropbear"
-	case "Stunnel":
+	case "SSL (Stunnel)":
 		return "/usr/local/bin/stunnel4"
 	case "OpenVPN":
 		return "/usr/local/bin/openvpn"
@@ -224,11 +224,11 @@ func (m *ExtraServicesManager) getBinaryPath(protocol string) string {
 
 func (m *ExtraServicesManager) getArgs(protocol string, port int, configPath string) []string {
 	switch protocol {
-	case "BadVPN":
+	case "UDP Custom (BadVPN)":
 		return []string{"-l", fmt.Sprintf("%d", port)}
 	case "Dropbear":
 		return []string{"-p", fmt.Sprintf("%d", port)}
-	case "Stunnel":
+	case "SSL (Stunnel)":
 		return []string{"-f", configPath}
 	case "OpenVPN":
 		return []string{"--config", configPath}
