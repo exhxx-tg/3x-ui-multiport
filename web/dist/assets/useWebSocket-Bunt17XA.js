@@ -1,2 +1,0 @@
-import{r as e}from"./rolldown-runtime-QTnfLwEv.js";import{xi as t}from"./vendor-D-iwWYkE.js";import{i as n}from"./index-CzSG4mvo.js";var r=e(t(),1),i=null;function a(){return i||(i=new n(typeof window<`u`&&window.X_UI_BASE_PATH||``),i)}function o(e){(0,r.useEffect)(()=>{let t=a(),n=Object.entries(e);for(let[e,r]of n)t.on(e,r);return t.connect(),()=>{for(let[e,r]of n)t.off(e,r)}},[])}export{o as t};
-//# sourceMappingURL=useWebSocket-Bunt17XA.js.map

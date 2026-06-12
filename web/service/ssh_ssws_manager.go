@@ -2,8 +2,10 @@ package service
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"regexp"
+	"strings"
 )
 
 // SshSswsManager handles the interaction with the host OS for managing SSH and SSWS users/configs.
@@ -17,26 +19,19 @@ func (m *SshSswsManager) CreateOSUser(username, password string) error {
 		return fmt.Errorf("invalid username: must start with a letter/underscore and contain only lowercase, numbers, underscores, or hyphens")
 	}
 
-	// 1. Create the user with a restricted shell or no-login if desired.
-	// Using -m to create home directory.
-	cmd := exec.Command("useradd", "-m", "-s", "/bin/bash", username)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("useradd failed: %w", err)
+	if _, err := exec.Command("getent", "passwd", username).Output(); err != nil {
+		cmd := exec.Command("useradd", "-M", "-s", "/bin/false", username)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("useradd failed: %w: %s", err, string(out))
+		}
+	} else {
+		_ = exec.Command("usermod", "-s", "/bin/false", username).Run()
 	}
 
-	// 2. Set the password.
-	// chpasswd expects "username:password" on stdin.
 	passwdCmd := exec.Command("chpasswd")
-	stdin, err := passwdCmd.StdinPipe()
-	if err != nil {
-		return fmt.Errorf("failed to open stdin for chpasswd: %w", err)
-	}
-	if _, err := stdin.Write([]byte(fmt.Sprintf("%s:%s\n", username, password))); err != nil {
-		return fmt.Errorf("failed to write password to stdin: %w", err)
-	}
-	stdin.Close()
-	if err := passwdCmd.Run(); err != nil {
-		return fmt.Errorf("chpasswd failed: %w", err)
+	passwdCmd.Stdin = strings.NewReader(fmt.Sprintf("%s:%s\n", username, password))
+	if out, err := passwdCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("chpasswd failed: %w: %s", err, string(out))
 	}
 
 	return nil
@@ -47,10 +42,9 @@ func (m *SshSswsManager) DeleteOSUser(username string) error {
 	if !usernameRegex.MatchString(username) {
 		return fmt.Errorf("invalid username")
 	}
-	// -r removes home directory and mail spool.
-	cmd := exec.Command("userdel", "-r", username)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("userdel failed: %w", err)
+	cmd := exec.Command("userdel", "-f", username)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("userdel failed: %w: %s", err, string(out))
 	}
 	return nil
 }
@@ -61,16 +55,9 @@ func (m *SshSswsManager) UpdateOSUserPassword(username, password string) error {
 		return fmt.Errorf("invalid username")
 	}
 	passwdCmd := exec.Command("chpasswd")
-	stdin, err := passwdCmd.StdinPipe()
-	if err != nil {
-		return fmt.Errorf("failed to open stdin for chpasswd: %w", err)
-	}
-	if _, err := stdin.Write([]byte(fmt.Sprintf("%s:%s\n", username, password))); err != nil {
-		return fmt.Errorf("failed to write password to stdin: %w", err)
-	}
-	stdin.Close()
-	if err := passwdCmd.Run(); err != nil {
-		return fmt.Errorf("chpasswd failed: %w", err)
+	passwdCmd.Stdin = strings.NewReader(fmt.Sprintf("%s:%s\n", username, password))
+	if out, err := passwdCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("chpasswd failed: %w: %s", err, string(out))
 	}
 	return nil
 }
@@ -78,14 +65,13 @@ func (m *SshSswsManager) UpdateOSUserPassword(username, password string) error {
 // ManageSSWSConfig handles the credential files for SSWS.
 // Implementation depends on the specific SSWS daemon used.
 func (m *SshSswsManager) ManageSSWSConfig(username, password string, action string) error {
-	// Example: Writing to a simple auth file /etc/ssws/users.conf
-	// In a real scenario, this would be more complex.
 	configPath := "/etc/ssws/users.conf"
-	
+	if err := os.MkdirAll("/etc/ssws", 0755); err != nil {
+		return err
+	}
+
 	switch action {
 	case "add", "update":
-		// Logic to append or update user in config file.
-		// For now, we simulate this by writing/updating a file.
 		return m.writeSswsUser(configPath, username, password)
 	case "delete":
 		return m.deleteSswsUser(configPath, username)
@@ -94,17 +80,42 @@ func (m *SshSswsManager) ManageSSWSConfig(username, password string, action stri
 }
 
 func (m *SshSswsManager) writeSswsUser(path, username, password string) error {
-	// Note: In a real production environment, we'd read the file, update the line, and write back.
-	// This is a simplified implementation for the framework.
-	content := fmt.Sprintf("%s:%s\n", username, password)
-	// This would typically involve reading the whole file first.
-	// For the purpose of this build, we use a simple append or overwrite logic.
-	// Implementation details would be refined based on the specific SSWS daemon.
-	_ = content // Use content to avoid unused variable
-	return nil
+	users := map[string]string{}
+	if raw, err := os.ReadFile(path); err == nil {
+		for _, line := range strings.Split(string(raw), "\n") {
+			name, pass, ok := strings.Cut(strings.TrimSpace(line), ":")
+			if ok && usernameRegex.MatchString(name) {
+				users[name] = pass
+			}
+		}
+	}
+	users[username] = password
+	var b strings.Builder
+	for name, pass := range users {
+		b.WriteString(name)
+		b.WriteByte(':')
+		b.WriteString(pass)
+		b.WriteByte('\n')
+	}
+	return os.WriteFile(path, []byte(b.String()), 0600)
 }
 
 func (m *SshSswsManager) deleteSswsUser(path, username string) error {
-	// Logic to remove user from config file.
-	return nil
+	users := map[string]string{}
+	if raw, err := os.ReadFile(path); err == nil {
+		for _, line := range strings.Split(string(raw), "\n") {
+			name, pass, ok := strings.Cut(strings.TrimSpace(line), ":")
+			if ok && name != username && usernameRegex.MatchString(name) {
+				users[name] = pass
+			}
+		}
+	}
+	var b strings.Builder
+	for name, pass := range users {
+		b.WriteString(name)
+		b.WriteByte(':')
+		b.WriteString(pass)
+		b.WriteByte('\n')
+	}
+	return os.WriteFile(path, []byte(b.String()), 0600)
 }

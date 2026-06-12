@@ -162,6 +162,7 @@
 .payload-box-head {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   padding: 10px 12px;
   color: #dbeafe;
@@ -169,16 +170,25 @@
   background: rgba(15, 23, 42, 0.92);
 }
 
-.payload-box pre {
+.payload-box-head span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.payload-box pre,
+.payload-pre {
   margin: 0;
   padding: 14px;
   max-height: 360px;
   overflow: auto;
   color: #bfdbfe;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   word-break: break-word;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
+  line-height: 1.6;
 }
 
 @media (max-width: 768px) {

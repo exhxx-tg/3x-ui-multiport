@@ -32,7 +32,7 @@ func (s *ExtraProtocolsService) MigrateDB() error {
 		{ProtocolName: "SSH", ListeningPort: 22, IsEnabled: false},
 		{ProtocolName: "SSWS", ListeningPort: 80, IsEnabled: false},
 		{ProtocolName: "SLOW-DNS", ListeningPort: 5353, IsEnabled: false},
-		{ProtocolName: "Psiphon", ListeningPort: 443, IsEnabled: false},
+		{ProtocolName: "Psiphon", ListeningPort: 3001, IsEnabled: false},
 		{ProtocolName: "UDP Custom (BadVPN)", ListeningPort: 7300, IsEnabled: false},
 		{ProtocolName: "Dropbear", ListeningPort: 143, IsEnabled: false},
 		{ProtocolName: "SSL (Stunnel)", ListeningPort: 443, IsEnabled: false},
@@ -95,15 +95,17 @@ func (s *ExtraProtocolsService) BuildConnectionDetails(user entity.ExtraUser, se
 		account := sshAccount(serverHost, port, user.Username, user.Password)
 		config = joinConfigLines(
 			"HTTP Custom - SSH",
-			fmt.Sprintf("SSH Account: %s", account),
+			fmt.Sprintf("Host:Port@User:Pass: %s", account),
+			"SNI: none",
 		)
 		details["SSH Account"] = account
 	case "DROPBEAR":
 		account := sshAccount(serverHost, port, user.Username, user.Password)
 		config = joinConfigLines(
 			"HTTP Custom - Dropbear SSH",
-			fmt.Sprintf("SSH Account: %s", account),
-			fmt.Sprintf("Alternative SSH Account: %s", sshAccount(serverHost, 22, user.Username, user.Password)),
+			fmt.Sprintf("Host:Port@User:Pass: %s", account),
+			fmt.Sprintf("Alternative 22: %s", sshAccount(serverHost, 22, user.Username, user.Password)),
+			"SNI: none",
 		)
 		details["SSH Account"] = account
 		details["Alternative SSH Account"] = sshAccount(serverHost, 22, user.Username, user.Password)
@@ -117,11 +119,13 @@ func (s *ExtraProtocolsService) BuildConnectionDetails(user entity.ExtraUser, se
 			hostHeader = serverHost
 		}
 		wsPort := payloadInt(payload, 80, "port", "wsPort", "remoteProxyPort")
-		payloadText := fmt.Sprintf("GET %s HTTP/1.1[crlf]Host: %s[crlf]Upgrade: websocket[crlf][crlf]", path, hostHeader)
+		payloadText := fmt.Sprintf("GET %s HTTP/1.1[crlf]Host: %s[crlf]Upgrade: websocket[crlf]Connection: Upgrade[crlf][crlf]", path, hostHeader)
 		remoteProxy := sshAccount(serverHost, wsPort, user.Username, user.Password)
 		config = joinConfigLines(
 			"HTTP Custom - SSH-WS (Payload)",
-			fmt.Sprintf("Remote Proxy: %s", remoteProxy),
+			fmt.Sprintf("SSH Account / Remote Proxy: %s", remoteProxy),
+			fmt.Sprintf("Proxy Host: %s", serverHost),
+			fmt.Sprintf("Proxy Port: %d", wsPort),
 			fmt.Sprintf("Payload: %s", payloadText),
 		)
 		details["Remote Proxy"] = remoteProxy
@@ -130,6 +134,9 @@ func (s *ExtraProtocolsService) BuildConnectionDetails(user entity.ExtraUser, se
 		details["Host Header"] = hostHeader
 	case "SLOW-DNS":
 		domain := firstPayloadValue(payload, "domain", "ns", "nameserver")
+		if domain == "" {
+			domain = readFirstExistingFile("/etc/dnstt/nameserver", "/etc/3x-ui/extra/dnstt.nameserver")
+		}
 		if domain == "" {
 			domain = generatedNameserver(serverHost)
 		}
@@ -144,8 +151,10 @@ func (s *ExtraProtocolsService) BuildConnectionDetails(user entity.ExtraUser, se
 		config = joinConfigLines(
 			"HTTP Custom - SlowDNS",
 			fmt.Sprintf("SSH Account: %s", account),
-			fmt.Sprintf("Nameserver (NS): %s", domain),
-			fmt.Sprintf("Public Key (Pubkey): %s", publicKey),
+			fmt.Sprintf("Nameserver: %s", domain),
+			fmt.Sprintf("Public Key: %s", publicKey),
+			fmt.Sprintf("DNS Server: %s", serverHost),
+			"Mode: DNSTT / SlowDNS",
 		)
 		details["SSH Account"] = account
 		details["DNSTT Domain/NS"] = domain
@@ -154,11 +163,15 @@ func (s *ExtraProtocolsService) BuildConnectionDetails(user entity.ExtraUser, se
 	case "PSIPHON":
 		serverEntry := firstPayloadValue(payload, "serverEntry", "entry", "config")
 		if serverEntry == "" {
-			serverEntry = "PASTE_PSIPHON_SERVER_ENTRY_HERE"
+			serverEntry = readFirstExistingFile("/etc/psiphon/server-entry.dat", "/etc/psiphon/server-entry.json", "/etc/3x-ui/extra/psiphon-server-entry.dat")
+		}
+		if serverEntry == "" {
+			serverEntry = "PSIPHON_SERVER_ENTRY_NOT_GENERATED_RUN_setup_extra_protocols.sh"
 		}
 		config = joinConfigLines(
 			"HTTP Custom - Psiphon",
-			fmt.Sprintf("Server Entry: %s", serverEntry),
+			"Server Entry:",
+			serverEntry,
 		)
 		details["Server Entry"] = serverEntry
 	case "UDP CUSTOM (BADVPN)", "UDP CUSTOM":
@@ -182,8 +195,9 @@ func (s *ExtraProtocolsService) BuildConnectionDetails(user entity.ExtraUser, se
 		account := sshAccount(serverHost, sslPort, user.Username, user.Password)
 		config = joinConfigLines(
 			"HTTP Custom - SSL/Stunnel",
-			fmt.Sprintf("SSH Account: %s", account),
-			fmt.Sprintf("SNI (Server Name Indication): %s", sni),
+			fmt.Sprintf("Host:Port@User:Pass: %s", account),
+			fmt.Sprintf("SNI: %s", sni),
+			"TLS Mode: SSL/TLS Direct",
 		)
 		details["TLS/SNI"] = sni
 		details["SSH Account"] = account
@@ -259,15 +273,18 @@ func buildOpenVPNClientTemplate(serverHost string, port int, username, password 
 	if ca == "" {
 		ca = "-----BEGIN CERTIFICATE-----\nPASTE_CA_CERTIFICATE_HERE\n-----END CERTIFICATE-----"
 	}
+	tlsAuth := readFirstExistingFile("/etc/openvpn/3x-ui/ta.key", "/etc/openvpn/ta.key", "/etc/3x-ui/extra/openvpn-ta.key")
 
-	return joinConfigLines(
+	lines := []string{
 		"# OpenVPN client template",
+		"# Save this as client.ovpn. OpenVPN will prompt for PAM/Linux credentials.",
 		fmt.Sprintf("# Username: %s", username),
 		fmt.Sprintf("# Password: %s", password),
 		"client",
 		"dev tun",
 		"proto udp",
 		fmt.Sprintf("remote %s %d", serverHost, port),
+		"remote-random",
 		"resolv-retry infinite",
 		"nobind",
 		"persist-key",
@@ -275,13 +292,21 @@ func buildOpenVPNClientTemplate(serverHost string, port int, username, password 
 		"remote-cert-tls server",
 		"auth-user-pass",
 		"cipher AES-128-CBC",
-		"data-ciphers AES-128-CBC",
+		"data-ciphers AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305:AES-128-CBC",
+		"data-ciphers-fallback AES-128-CBC",
 		"auth SHA256",
+		"key-direction 1",
+		"redirect-gateway def1",
+		"dhcp-option DNS 1.1.1.1",
 		"verb 3",
 		"<ca>",
 		ca,
 		"</ca>",
-	)
+	}
+	if tlsAuth != "" {
+		lines = append(lines, "<tls-auth>", tlsAuth, "</tls-auth>")
+	}
+	return joinConfigLines(lines...)
 }
 
 func parseExtraPayload(raw string) map[string]string {
@@ -333,7 +358,7 @@ func defaultExtraProtocolPort(protocol string) int {
 	case "SLOW-DNS":
 		return 5353
 	case "PSIPHON":
-		return 443
+		return 3001
 	case "UDP CUSTOM (BADVPN)", "UDP CUSTOM":
 		return 7300
 	case "DROPBEAR":
@@ -380,28 +405,17 @@ func (s *ExtraProtocolsService) AddUser(user *entity.ExtraUser) error {
 		return common.NewError("username, password and protocol type are required")
 	}
 
-	if user.ProtocolType == "SSH" {
-		if err := s.sysManager.CreateOSUser(user.Username, user.Password); err != nil {
-			return fmt.Errorf("OS user creation failed: %w", err)
-		}
-	} else if user.ProtocolType == "SSWS" {
+	if err := s.ensureLinuxAccount(user.Username, user.Password, user.ExpiryDate); err != nil {
+		return fmt.Errorf("Linux user sync failed: %w", err)
+	}
+
+	if user.ProtocolType == "SSWS" {
 		if err := s.sysManager.ManageSSWSConfig(user.Username, user.Password, "add"); err != nil {
 			return fmt.Errorf("SSWS config update failed: %w", err)
 		}
 	}
 
-	if user.ProtocolType != "SSH" && user.ProtocolType != "SSWS" {
-		var users []entity.ExtraUser
-		database.GetDB().Find(&users)
-		users = append(users, *user)
-
-		var setting entity.ExtraSetting
-		if err := database.GetDB().Where("protocol_name = ?", user.ProtocolType).First(&setting).Error; err == nil {
-			if setting.IsEnabled {
-				GetExtraServicesManager().RestartDaemon(user.ProtocolType, setting.ListeningPort, users)
-			}
-		}
-	}
+	s.restartProtocolIfEnabled(user.ProtocolType, []entity.ExtraUser{*user})
 
 	return database.GetDB().Create(user).Error
 }
@@ -416,36 +430,48 @@ func (s *ExtraProtocolsService) UpdateUser(id int64, updates map[string]any) err
 		return err
 	}
 
-	if user.ProtocolType == "SSH" {
-		if pass, ok := updates["password"].(string); ok {
-			if err := s.sysManager.UpdateOSUserPassword(user.Username, pass); err != nil {
-				return fmt.Errorf("OS password update failed: %w", err)
-			}
-		}
-		if uname, ok := updates["username"].(string); ok && uname != user.Username {
-			return fmt.Errorf("changing SSH username is not supported via UI")
-		}
-	} else if user.ProtocolType == "SSWS" {
-		if pass, ok := updates["password"].(string); ok {
-			if err := s.sysManager.ManageSSWSConfig(user.Username, pass, "update"); err != nil {
-				return fmt.Errorf("SSWS config update failed: %w", err)
-			}
+	newUsername := user.Username
+	if uname, ok := updates["username"].(string); ok && strings.TrimSpace(uname) != "" {
+		newUsername = strings.TrimSpace(uname)
+	}
+	newPassword := user.Password
+	if pass, ok := updates["password"].(string); ok && pass != "" {
+		newPassword = pass
+	}
+	newExpiry := user.ExpiryDate
+	if expiry, ok := normalizeExpiryUpdate(updates["expiryDate"]); ok {
+		newExpiry = expiry
+	}
+	newProtocol := user.ProtocolType
+	if protocol, ok := updates["protocolType"].(string); ok && strings.TrimSpace(protocol) != "" {
+		newProtocol = strings.TrimSpace(protocol)
+	}
+
+	if err := s.ensureLinuxAccount(newUsername, newPassword, newExpiry); err != nil {
+		return fmt.Errorf("Linux user sync failed: %w", err)
+	}
+	if newUsername != user.Username {
+		if err := s.sysManager.DeleteOSUser(user.Username); err != nil {
+			logger.Warningf("old Linux user deletion failed after rename from %s to %s: %v", user.Username, newUsername, err)
 		}
 	}
 
-	if user.ProtocolType != "SSH" && user.ProtocolType != "SSWS" {
-		var users []entity.ExtraUser
-		database.GetDB().Find(&users)
-
-		var setting entity.ExtraSetting
-		if err := database.GetDB().Where("protocol_name = ?", user.ProtocolType).First(&setting).Error; err == nil {
-			if setting.IsEnabled {
-				GetExtraServicesManager().RestartDaemon(user.ProtocolType, setting.ListeningPort, users)
-			}
+	if newProtocol == "SSWS" {
+		if err := s.sysManager.ManageSSWSConfig(newUsername, newPassword, "update"); err != nil {
+			return fmt.Errorf("SSWS config update failed: %w", err)
 		}
+	} else if user.ProtocolType == "SSWS" && newProtocol != "SSWS" {
+		_ = s.sysManager.ManageSSWSConfig(user.Username, user.Password, "delete")
 	}
 
-	return database.GetDB().Model(&entity.ExtraUser{}).Where("id = ?", id).Updates(updates).Error
+	if err := database.GetDB().Model(&entity.ExtraUser{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		return err
+	}
+	s.restartProtocolIfEnabled(user.ProtocolType, nil)
+	if newProtocol != user.ProtocolType {
+		s.restartProtocolIfEnabled(newProtocol, nil)
+	}
+	return nil
 }
 
 func (s *ExtraProtocolsService) DeleteUser(id int64) error {
@@ -454,17 +480,84 @@ func (s *ExtraProtocolsService) DeleteUser(id int64) error {
 		return err
 	}
 
-	if user.ProtocolType == "SSH" {
-		if err := s.sysManager.DeleteOSUser(user.Username); err != nil {
-			return fmt.Errorf("OS user deletion failed: %w", err)
-		}
-	} else if user.ProtocolType == "SSWS" {
+	if err := s.sysManager.DeleteOSUser(user.Username); err != nil {
+		return fmt.Errorf("Linux user deletion failed: %w", err)
+	}
+
+	if user.ProtocolType == "SSWS" {
 		if err := s.sysManager.ManageSSWSConfig(user.Username, user.Password, "delete"); err != nil {
 			return fmt.Errorf("SSWS config deletion failed: %w", err)
 		}
 	}
 
-	return database.GetDB().Delete(&entity.ExtraUser{}, id).Error
+	if err := database.GetDB().Delete(&entity.ExtraUser{}, id).Error; err != nil {
+		return err
+	}
+	s.restartProtocolIfEnabled(user.ProtocolType, nil)
+	return nil
+}
+
+func (s *ExtraProtocolsService) ensureLinuxAccount(username, password string, expiry int64) error {
+	if err := s.sysManager.CreateOSUser(username, password); err != nil {
+		return err
+	}
+	return s.setLinuxAccountExpiry(username, expiry)
+}
+
+func (s *ExtraProtocolsService) setLinuxAccountExpiry(username string, expiry int64) error {
+	if !usernameRegex.MatchString(username) {
+		return fmt.Errorf("invalid username")
+	}
+	if expiry <= 0 {
+		if out, err := exec.Command("usermod", "-e", "", username).CombinedOutput(); err != nil {
+			return fmt.Errorf("usermod clear expiry failed: %w: %s", err, string(out))
+		}
+		return nil
+	}
+	expiryDate := time.Unix(expiry, 0)
+	if expiry >= 1_000_000_000_000 {
+		expiryDate = time.UnixMilli(expiry)
+	}
+	if out, err := exec.Command("usermod", "-e", expiryDate.Format("2006-01-02"), username).CombinedOutput(); err != nil {
+		return fmt.Errorf("usermod expiry failed: %w: %s", err, string(out))
+	}
+	return nil
+}
+
+func normalizeExpiryUpdate(value any) (int64, bool) {
+	switch v := value.(type) {
+	case nil:
+		return 0, false
+	case int64:
+		return v, true
+	case int:
+		return int64(v), true
+	case float64:
+		return int64(v), true
+	case string:
+		v = strings.TrimSpace(v)
+		if v == "" {
+			return 0, false
+		}
+		var parsed int64
+		if _, err := fmt.Sscanf(v, "%d", &parsed); err == nil {
+			return parsed, true
+		}
+	}
+	return 0, false
+}
+
+func (s *ExtraProtocolsService) restartProtocolIfEnabled(protocol string, extraUsers []entity.ExtraUser) {
+	var setting entity.ExtraSetting
+	if err := database.GetDB().Where("protocol_name = ?", protocol).First(&setting).Error; err != nil || !setting.IsEnabled {
+		return
+	}
+	var users []entity.ExtraUser
+	database.GetDB().Find(&users)
+	users = append(users, extraUsers...)
+	if err := GetExtraServicesManager().RestartDaemon(protocol, setting.ListeningPort, users); err != nil {
+		logger.Errorf("Failed to restart %s daemon after user sync: %v", protocol, err)
+	}
 }
 
 // --- Settings Management ---

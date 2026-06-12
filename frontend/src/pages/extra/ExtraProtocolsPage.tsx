@@ -417,9 +417,10 @@ export default function ExtraProtocolsPage() {
             </Descriptions>
             <div className="payload-box">
               <div className="payload-box-head">
-                <GlobalOutlined /> Fully formatted connection details
+                <span><GlobalOutlined /> Fully formatted connection details</span>
+                <Button size="small" type="primary" icon={<CopyOutlined />} onClick={copySelectedConfig}>Copy</Button>
               </div>
-              <pre>{configText(configUser)}</pre>
+              <pre className="payload-pre">{configText(configUser)}</pre>
             </div>
           </div>
         )}
