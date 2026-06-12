@@ -11,16 +11,17 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/util/common"
 )
 
-
 // ExtraUser represents a user for a protocol not natively managed by Xray core in 3x-ui.
 type ExtraUser struct {
-	ID            int64  `json:"id" gorm:"primaryKey;autoIncrement"`
-	Username      string `json:"username"`
-	Password      string `json:"password"`
-	ProtocolType  string `json:"protocolType"` // SSH, SSWS, SLOW-DNS, Psiphon
-	ExpiryDate    int64  `json:"expiryDate"`   // Unix timestamp
-	Status        string `json:"status"`       // active, inactive
-	ConfigPayload string `json:"configPayload"` // JSON string for protocol-specific config
+	ID               int64             `json:"id" gorm:"primaryKey;autoIncrement"`
+	Username         string            `json:"username"`
+	Password         string            `json:"password"`
+	ProtocolType     string            `json:"protocolType"`  // SSH, SSWS, SLOW-DNS, Psiphon
+	ExpiryDate       int64             `json:"expiryDate"`    // Unix timestamp
+	Status           string            `json:"status"`        // active, inactive
+	ConfigPayload    string            `json:"configPayload"` // JSON string for protocol-specific config
+	ConfigString     string            `json:"configString" gorm:"-"`
+	FormattedDetails map[string]string `json:"formattedDetails" gorm:"-"`
 }
 
 // ExtraSetting represents a global setting for an extra protocol.

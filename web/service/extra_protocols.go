@@ -1,10 +1,13 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/mhsanaei/3x-ui/v3/database"
 	"github.com/mhsanaei/3x-ui/v3/logger"
@@ -48,19 +51,209 @@ func (s *ExtraProtocolsService) MigrateDB() error {
 
 // --- User Management ---
 
-func (s *ExtraProtocolsService) GetUsers() ([]entity.ExtraUser, error) {
+func (s *ExtraProtocolsService) GetUsers(serverHost ...string) ([]entity.ExtraUser, error) {
 	var users []entity.ExtraUser
 	if err := database.GetDB().Find(&users).Error; err != nil {
 		return nil, err
 	}
+	host := "YOUR_SERVER_IP"
+	if len(serverHost) > 0 && strings.TrimSpace(serverHost[0]) != "" {
+		host = strings.TrimSpace(serverHost[0])
+	}
+	settings, _ := s.GetSettings()
+	ports := make(map[string]int, len(settings))
+	for _, setting := range settings {
+		ports[setting.ProtocolName] = setting.ListeningPort
+	}
+	for i := range users {
+		users[i].ConfigString, users[i].FormattedDetails = s.BuildConnectionDetails(users[i], host, ports)
+	}
 	return users, nil
+}
+
+func (s *ExtraProtocolsService) BuildConnectionDetails(user entity.ExtraUser, serverHost string, ports map[string]int) (string, map[string]string) {
+	protocol := strings.TrimSpace(user.ProtocolType)
+	port := ports[protocol]
+	if port == 0 {
+		port = defaultExtraProtocolPort(protocol)
+	}
+	payload := parseExtraPayload(user.ConfigPayload)
+	details := map[string]string{
+		"Protocol": protocol,
+		"Server":   serverHost,
+		"Port":     fmt.Sprintf("%d", port),
+		"Username": user.Username,
+		"Password": user.Password,
+		"Status":   user.Status,
+		"Expiry":   formatExtraExpiry(user.ExpiryDate),
+	}
+
+	var config string
+	switch strings.ToUpper(protocol) {
+	case "SSH":
+		config = fmt.Sprintf("%s:%d@%s:%s", serverHost, port, user.Username, user.Password)
+		details["Connection"] = config
+	case "DROPBEAR":
+		config = fmt.Sprintf("dropbear://%s:%s@%s:%d", user.Username, user.Password, serverHost, port)
+		details["Connection"] = fmt.Sprintf("%s:%d@%s:%s", serverHost, port, user.Username, user.Password)
+	case "SSWS", "SSH-WS":
+		path := firstPayloadValue(payload, "path", "wsPath", "websocketPath")
+		if path == "" {
+			path = "/"
+		}
+		hostHeader := firstPayloadValue(payload, "host", "sni", "bugHost")
+		if hostHeader == "" {
+			hostHeader = serverHost
+		}
+		payloadText := fmt.Sprintf("GET %s HTTP/1.1[crlf]Host: %s[crlf]Upgrade: websocket[crlf][crlf]", path, hostHeader)
+		config = fmt.Sprintf("sshws://%s:%s@%s:%d?path=%s&host=%s", user.Username, user.Password, serverHost, port, path, hostHeader)
+		details["Payload"] = payloadText
+		details["WebSocket Path"] = path
+		details["Host Header"] = hostHeader
+	case "SLOW-DNS":
+		domain := firstPayloadValue(payload, "domain", "ns", "nameserver")
+		if domain == "" {
+			domain = "your-ns-domain.example.com"
+		}
+		publicKey := firstPayloadValue(payload, "publicKey", "pubKey", "dnsttKey", "key")
+		if publicKey == "" {
+			publicKey = readFirstExistingFile("/etc/dnstt/server.pub", "/etc/3x-ui/extra/dnstt.pub")
+		}
+		if publicKey == "" {
+			publicKey = "DNSTT_PUBLIC_KEY_NOT_SET"
+		}
+		config = fmt.Sprintf("dnstt://%s:%s@%s:%d?domain=%s&pubkey=%s", user.Username, user.Password, serverHost, port, domain, publicKey)
+		details["DNSTT Domain/NS"] = domain
+		details["DNSTT Public Key"] = publicKey
+		details["Client Command"] = fmt.Sprintf("dnstt-client -udp %s:%d -pubkey %s %s 127.0.0.1:2222", serverHost, port, publicKey, domain)
+	case "PSIPHON":
+		serverEntry := firstPayloadValue(payload, "serverEntry", "entry", "config")
+		if serverEntry == "" {
+			serverEntry = fmt.Sprintf("psiphon://%s:%s@%s:%d", user.Username, user.Password, serverHost, port)
+		}
+		config = serverEntry
+		details["Server Entry"] = serverEntry
+	case "UDP CUSTOM (BADVPN)", "UDP CUSTOM":
+		config = fmt.Sprintf("udp-custom://%s:%s@%s:%d", user.Username, user.Password, serverHost, port)
+		details["BadVPN Gateway"] = fmt.Sprintf("%s:%d", serverHost, port)
+	case "SSL (STUNNEL)", "STUNNEL":
+		sni := firstPayloadValue(payload, "sni", "host")
+		if sni == "" {
+			sni = serverHost
+		}
+		config = fmt.Sprintf("stunnel://%s:%s@%s:%d?sni=%s", user.Username, user.Password, serverHost, port, sni)
+		details["TLS/SNI"] = sni
+		details["SSH over TLS"] = fmt.Sprintf("%s:%d@%s:%s", serverHost, port, user.Username, user.Password)
+	case "OPENVPN":
+		config = fmt.Sprintf("openvpn://%s:%s@%s:%d", user.Username, user.Password, serverHost, port)
+	case "SQUID":
+		config = fmt.Sprintf("http-proxy://%s:%s@%s:%d", user.Username, user.Password, serverHost, port)
+	case "OHP":
+		config = fmt.Sprintf("ohp://%s:%s@%s:%d", user.Username, user.Password, serverHost, port)
+	default:
+		config = fmt.Sprintf("%s:%d@%s:%s", serverHost, port, user.Username, user.Password)
+	}
+
+	details["Config"] = config
+	return config, orderedDetails(details)
+}
+
+func parseExtraPayload(raw string) map[string]string {
+	result := map[string]string{}
+	if strings.TrimSpace(raw) == "" {
+		return result
+	}
+	var anyMap map[string]any
+	if err := json.Unmarshal([]byte(raw), &anyMap); err == nil {
+		for key, value := range anyMap {
+			result[key] = fmt.Sprint(value)
+		}
+		return result
+	}
+	for _, part := range strings.FieldsFunc(raw, func(r rune) bool { return r == '\n' || r == ';' || r == ',' }) {
+		key, value, ok := strings.Cut(part, "=")
+		if ok {
+			result[strings.TrimSpace(key)] = strings.TrimSpace(value)
+		}
+	}
+	return result
+}
+
+func firstPayloadValue(payload map[string]string, keys ...string) string {
+	for _, key := range keys {
+		if value := strings.TrimSpace(payload[key]); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func formatExtraExpiry(expiry int64) string {
+	if expiry <= 0 {
+		return "Never"
+	}
+	if expiry < 1_000_000_000_000 {
+		return time.Unix(expiry, 0).Format("2006-01-02 15:04:05")
+	}
+	return time.UnixMilli(expiry).Format("2006-01-02 15:04:05")
+}
+
+func defaultExtraProtocolPort(protocol string) int {
+	switch strings.ToUpper(strings.TrimSpace(protocol)) {
+	case "SSH":
+		return 2222
+	case "SSWS", "SSH-WS":
+		return 8443
+	case "SLOW-DNS":
+		return 5353
+	case "PSIPHON":
+		return 443
+	case "UDP CUSTOM (BADVPN)", "UDP CUSTOM":
+		return 7300
+	case "DROPBEAR":
+		return 2223
+	case "SSL (STUNNEL)", "STUNNEL":
+		return 444
+	case "OPENVPN":
+		return 1194
+	case "SQUID":
+		return 3128
+	case "OHP":
+		return 80
+	default:
+		return 0
+	}
+}
+
+func readFirstExistingFile(paths ...string) string {
+	for _, path := range paths {
+		content, err := os.ReadFile(path)
+		if err == nil && strings.TrimSpace(string(content)) != "" {
+			return strings.TrimSpace(string(content))
+		}
+	}
+	return ""
+}
+
+func orderedDetails(details map[string]string) map[string]string {
+	// JSON objects are unordered, but sorting here gives deterministic maps for tests/logging before encoding.
+	keys := make([]string, 0, len(details))
+	for key := range details {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	ordered := make(map[string]string, len(details))
+	for _, key := range keys {
+		ordered[key] = details[key]
+	}
+	return ordered
 }
 
 func (s *ExtraProtocolsService) AddUser(user *entity.ExtraUser) error {
 	if user.Username == "" || user.Password == "" || user.ProtocolType == "" {
 		return common.NewError("username, password and protocol type are required")
 	}
-	
+
 	if user.ProtocolType == "SSH" {
 		if err := s.sysManager.CreateOSUser(user.Username, user.Password); err != nil {
 			return fmt.Errorf("OS user creation failed: %w", err)
@@ -75,7 +268,7 @@ func (s *ExtraProtocolsService) AddUser(user *entity.ExtraUser) error {
 		var users []entity.ExtraUser
 		database.GetDB().Find(&users)
 		users = append(users, *user)
-		
+
 		var setting entity.ExtraSetting
 		if err := database.GetDB().Where("protocol_name = ?", user.ProtocolType).First(&setting).Error; err == nil {
 			if setting.IsEnabled {
@@ -117,7 +310,7 @@ func (s *ExtraProtocolsService) UpdateUser(id int64, updates map[string]any) err
 	if user.ProtocolType != "SSH" && user.ProtocolType != "SSWS" {
 		var users []entity.ExtraUser
 		database.GetDB().Find(&users)
-		
+
 		var setting entity.ExtraSetting
 		if err := database.GetDB().Where("protocol_name = ?", user.ProtocolType).First(&setting).Error; err == nil {
 			if setting.IsEnabled {

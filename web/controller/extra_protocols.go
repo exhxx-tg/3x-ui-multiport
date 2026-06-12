@@ -1,7 +1,9 @@
 package controller
 
 import (
+	"net"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mhsanaei/3x-ui/v3/web/entity"
@@ -29,8 +31,28 @@ func (c *ExtraProtocolsController) initRouter(g *gin.RouterGroup) {
 }
 
 func (c *ExtraProtocolsController) GetUsers(ctx *gin.Context) {
-	users, err := c.service.GetUsers()
+	users, err := c.service.GetUsers(resolveExtraProtocolHost(ctx))
 	jsonObj(ctx, users, err)
+}
+
+func resolveExtraProtocolHost(ctx *gin.Context) string {
+	for _, header := range []string{"X-Forwarded-Host", "X-Real-Host", "Host"} {
+		value := strings.TrimSpace(ctx.GetHeader(header))
+		if value == "" && header == "Host" {
+			value = ctx.Request.Host
+		}
+		if value == "" {
+			continue
+		}
+		if strings.Contains(value, ",") {
+			value = strings.TrimSpace(strings.Split(value, ",")[0])
+		}
+		if host, _, err := net.SplitHostPort(value); err == nil {
+			return host
+		}
+		return strings.Trim(value, "[]")
+	}
+	return "YOUR_SERVER_IP"
 }
 
 func (c *ExtraProtocolsController) AddUser(ctx *gin.Context) {
