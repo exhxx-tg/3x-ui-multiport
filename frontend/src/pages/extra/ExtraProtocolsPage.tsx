@@ -115,10 +115,7 @@ function normalizeExpiry(expiryDate: number) {
 
 function configText(user: ExtraUser | null) {
   if (!user) return '';
-  const rows = user.formattedDetails
-    ? Object.entries(user.formattedDetails).map(([key, value]) => `${key}: ${value}`)
-    : [];
-  return [`# ${protocolMeta(user.protocolType).name} config for ${user.username}`, ...rows, '', user.configString || ''].join('\n').trim();
+  return user.configString || `Config will be generated after saving ${user.username}.`;
 }
 
 export default function ExtraProtocolsPage() {
@@ -271,7 +268,7 @@ export default function ExtraProtocolsPage() {
             <div className="extra-stat"><SafetyCertificateOutlined /><span>Service</span><strong>{setting?.isEnabled ? 'Enabled' : 'Disabled'}</strong></div>
           </div>
           <Paragraph copyable={{ text: user.configString || '' }} ellipsis={{ rows: 2 }} className="config-preview">
-            {user.configString || 'Config will be generated after saving.'}
+            <pre>{user.configString || 'Config will be generated after saving.'}</pre>
           </Paragraph>
         </Card>
       </Col>

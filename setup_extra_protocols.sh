@@ -1,29 +1,35 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# 3x-ui Multiport Extra Protocols installation engine.
-# Installs and wires systemd services for: SSH, Dropbear, Stunnel, SSH-WS,
-# UDP Custom (BadVPN), SlowDNS (DNSTT), and Psiphon.
+# 3x-ui Multiport Extra Protocols installer for HTTP Custom-compatible clients.
 #
-# SlowDNS source (required): https://github.com/powermx/dnstt
-# Psiphon sources (required): https://github.com/tipsytux/psiphon or https://github.com/thispc/psiphon
+# Services installed/configured:
+#   - Dropbear SSH: ports 22 and 143
+#   - Stunnel4 SSL/TLS: ports 443 and 444 -> Dropbear backend
+#   - BadVPN udpgw: UDP gateway port 7300
+#   - OpenVPN: TCP/UDP port 1194
+#   - SSH over WebSocket bridge: port 80 -> SSH backend
+#
+# Important HTTP Custom TLS compatibility note:
+# /etc/stunnel/stunnel.conf is written with sslVersion = all plus broad cipher
+# settings to avoid "Cannot negotiate, proposals do not match" errors on
+# clients that propose older/limited TLS suites.
 
 export DEBIAN_FRONTEND=noninteractive
 
 EXTRA_DIR="/etc/3x-ui/extra"
 BIN_DIR="/usr/local/bin"
 LOG_DIR="/var/log/3x-ui-extra"
-SSH_PORT="${SSH_PORT:-2222}"
-DROPBEAR_PORT="${DROPBEAR_PORT:-2223}"
-STUNNEL_PORT="${STUNNEL_PORT:-444}"
-SSHWS_PORT="${SSHWS_PORT:-8443}"
-UDP_CUSTOM_PORT="${UDP_CUSTOM_PORT:-7300}"
-SLOWDNS_PORT="${SLOWDNS_PORT:-5353}"
-PSIPHON_PORT="${PSIPHON_PORT:-443}"
-SSH_BACKEND_PORT="${SSH_BACKEND_PORT:-22}"
 
-DNSTT_REPO="https://github.com/powermx/dnstt"
-PSIPHON_REPOS=("https://github.com/tipsytux/psiphon" "https://github.com/thispc/psiphon")
+DROPBEAR_PORTS="${DROPBEAR_PORTS:-22 143}"
+DROPBEAR_BACKEND_PORT="${DROPBEAR_BACKEND_PORT:-143}"
+STUNNEL_PORTS="${STUNNEL_PORTS:-443 444}"
+SSH_BACKEND_HOST="${SSH_BACKEND_HOST:-127.0.0.1}"
+SSH_BACKEND_PORT="${SSH_BACKEND_PORT:-143}"
+OPENSSH_PORT="${OPENSSH_PORT:-2222}"
+SSHWS_PORT="${SSHWS_PORT:-80}"
+UDP_CUSTOM_PORT="${UDP_CUSTOM_PORT:-7300}"
+OPENVPN_PORT="${OPENVPN_PORT:-1194}"
 
 log() { printf '\033[1;32m[extra-protocols]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[extra-protocols][warn]\033[0m %s\n' "$*" >&2; }
@@ -54,42 +60,20 @@ install_packages() {
 pkg_bootstrap() {
   local pm="$1"
   case "$pm" in
-    apt) install_packages "$pm" ca-certificates curl wget git build-essential golang openssh-server dropbear stunnel4 python3 python3-pip openssl tar gzip ;;
-    dnf|yum) install_packages "$pm" ca-certificates curl wget git gcc gcc-c++ make golang openssh-server dropbear stunnel python3 python3-pip openssl tar gzip ;;
-    pacman) install_packages "$pm" ca-certificates curl wget git base-devel go openssh dropbear stunnel python python-pip openssl tar gzip ;;
+    apt)
+      install_packages "$pm" ca-certificates curl wget git build-essential cmake golang openssh-server dropbear stunnel4 python3 openssl openvpn easy-rsa iptables tar gzip
+      ;;
+    dnf|yum)
+      install_packages "$pm" ca-certificates curl wget git gcc gcc-c++ make cmake golang openssh-server dropbear stunnel python3 openssl openvpn easy-rsa iptables tar gzip || true
+      ;;
+    pacman)
+      install_packages "$pm" ca-certificates curl wget git base-devel cmake go openssh dropbear stunnel python openssl openvpn easy-rsa iptables tar gzip
+      ;;
   esac
 }
 
-download_with_fallback() {
-  local dest="$1"; shift
-  local url
-  for url in "$@"; do
-    log "Downloading $url"
-    if curl -fsSL --retry 3 --connect-timeout 12 "$url" -o "$dest"; then
-      return 0
-    fi
-    warn "Download failed: $url"
-  done
-  return 1
-}
-
-clone_with_fallback() {
-  local dest="$1"; shift
-  rm -rf "$dest"
-  local repo
-  for repo in "$@"; do
-    log "Cloning $repo"
-    if git clone --depth=1 "$repo" "$dest"; then
-      return 0
-    fi
-    warn "Clone failed: $repo"
-    rm -rf "$dest"
-  done
-  return 1
-}
-
 ensure_dirs() {
-  mkdir -p "$EXTRA_DIR" "$BIN_DIR" "$LOG_DIR" /etc/stunnel /etc/ssh-ws /etc/psiphon /etc/dnstt
+  mkdir -p "$EXTRA_DIR" "$BIN_DIR" "$LOG_DIR" /etc/stunnel /etc/ssh-ws /etc/openvpn/3x-ui /etc/systemd/system
 }
 
 write_service() {
@@ -100,12 +84,16 @@ write_service() {
   systemctl enable "${name}.service" >/dev/null 2>&1 || true
 }
 
-configure_ssh() {
-  log "Configuring OpenSSH on port ${SSH_PORT}"
+restart_service() {
+  local name="$1"
+  systemctl restart "${name}.service" || warn "${name}.service did not start; inspect: systemctl status ${name}.service"
+}
+
+configure_openssh_backend() {
+  log "Ensuring OpenSSH is available on non-conflicting port ${OPENSSH_PORT}; Dropbear owns ports ${DROPBEAR_PORTS}"
   mkdir -p /etc/ssh/sshd_config.d
   cat > /etc/ssh/sshd_config.d/99-3x-ui-extra.conf <<EOF_SSH
-Port 22
-Port ${SSH_PORT}
+Port ${OPENSSH_PORT}
 PasswordAuthentication yes
 PubkeyAuthentication yes
 PermitTunnel yes
@@ -116,72 +104,119 @@ EOF_SSH
   systemctl restart ssh >/dev/null 2>&1 || systemctl restart sshd >/dev/null 2>&1 || warn "Could not restart ssh/sshd now."
 }
 
+dropbear_binary() {
+  command -v dropbear || true
+}
+
 configure_dropbear() {
-  log "Configuring Dropbear service on port ${DROPBEAR_PORT}"
+  log "Configuring Dropbear on ports: ${DROPBEAR_PORTS}"
+  local dropbear_bin
+  dropbear_bin="$(dropbear_binary)"
+  [[ -n "$dropbear_bin" ]] || die "dropbear binary was not found after package installation."
+
+  local args="-F -E -b /etc/issue.net"
+  local p
+  for p in ${DROPBEAR_PORTS}; do
+    args="${args} -p 0.0.0.0:${p}"
+  done
+
+  cat > /etc/default/dropbear-3x-ui-extra <<EOF_DROPBEAR_ENV
+DROPBEAR_ARGS="${args}"
+EOF_DROPBEAR_ENV
+
   write_service "dropbear-extra" "[Unit]
-Description=3x-ui Extra Dropbear SSH
+Description=3x-ui Extra Dropbear SSH (ports ${DROPBEAR_PORTS})
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/sbin/dropbear -F -E -p ${DROPBEAR_PORT} -b /etc/issue.net
+EnvironmentFile=-/etc/default/dropbear-3x-ui-extra
+ExecStart=${dropbear_bin} \$DROPBEAR_ARGS
 Restart=always
 RestartSec=3
 
 [Install]
 WantedBy=multi-user.target"
-  systemctl restart dropbear-extra.service || warn "Dropbear extra service did not start; check package path."
+  restart_service "dropbear-extra"
+}
+
+generate_stunnel_cert() {
+  local cert="/etc/stunnel/3x-ui-extra.pem"
+  if [[ ! -s "$cert" ]]; then
+    openssl req -new -x509 -days 3650 -nodes \
+      -out "$cert" -keyout "$cert" -subj "/CN=3x-ui-http-custom" >/dev/null 2>&1
+  fi
+  chmod 600 "$cert"
+  printf '%s' "$cert"
 }
 
 configure_stunnel() {
-  log "Configuring Stunnel TLS wrapper on port ${STUNNEL_PORT} -> 127.0.0.1:${SSH_BACKEND_PORT}"
-  local cert="/etc/stunnel/3x-ui-extra.pem"
-  [[ -s "$cert" ]] || openssl req -new -x509 -days 3650 -nodes \
-    -out "$cert" -keyout "$cert" -subj "/CN=3x-ui-extra" >/dev/null 2>&1
-  chmod 600 "$cert"
-  cat > /etc/stunnel/3x-ui-extra.conf <<EOF_STUNNEL
+  log "Configuring Stunnel4 on ports ${STUNNEL_PORTS} -> 127.0.0.1:${DROPBEAR_BACKEND_PORT}"
+  local stunnel_bin cert
+  stunnel_bin="$(command -v stunnel4 || command -v stunnel || true)"
+  [[ -n "$stunnel_bin" ]] || die "stunnel/stunnel4 binary was not found after package installation."
+  cert="$(generate_stunnel_cert)"
+
+  cat > /etc/stunnel/stunnel.conf <<EOF_STUNNEL
 foreground = yes
 pid = /run/stunnel-3x-ui-extra.pid
 cert = ${cert}
 
-[ssh-tls]
-accept = 0.0.0.0:${STUNNEL_PORT}
-connect = 127.0.0.1:${SSH_BACKEND_PORT}
+; CRITICAL HTTP Custom compatibility settings:
+; Accept broad TLS proposals to prevent: "Cannot negotiate, proposals do not match".
+sslVersion = all
+ciphers = ALL:@SECLEVEL=0
+ciphersuites = TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:TLS_AES_128_CCM_SHA256
+options = NO_SSLv2
+options = NO_SSLv3
 TIMEOUTclose = 0
+
 EOF_STUNNEL
+
+  local p
+  for p in ${STUNNEL_PORTS}; do
+    cat >> /etc/stunnel/stunnel.conf <<EOF_STUNNEL_SERVICE
+[ssh-tls-${p}]
+accept = 0.0.0.0:${p}
+connect = 127.0.0.1:${DROPBEAR_BACKEND_PORT}
+
+EOF_STUNNEL_SERVICE
+  done
+
+  sed -i 's/^ENABLED=.*/ENABLED=1/' /etc/default/stunnel4 2>/dev/null || true
   write_service "stunnel-extra" "[Unit]
-Description=3x-ui Extra Stunnel SSH TLS
-After=network-online.target
+Description=3x-ui Extra Stunnel4 SSL/TLS for HTTP Custom
+After=network-online.target dropbear-extra.service
 Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/stunnel /etc/stunnel/3x-ui-extra.conf
+ExecStart=${stunnel_bin} /etc/stunnel/stunnel.conf
 Restart=always
 RestartSec=3
 
 [Install]
 WantedBy=multi-user.target"
-  systemctl restart stunnel-extra.service || warn "Stunnel extra service did not start."
+  restart_service "stunnel-extra"
 }
 
 install_ssh_ws() {
-  log "Installing lightweight SSH WebSocket bridge"
+  log "Installing SSH WebSocket bridge on port ${SSHWS_PORT} -> ${SSH_BACKEND_HOST}:${SSH_BACKEND_PORT}"
   cat > "${BIN_DIR}/ssh-ws" <<'PY'
 #!/usr/bin/env python3
-import asyncio, base64, hashlib, os, signal, struct
+import asyncio, base64, hashlib, os, struct
 
 HOST = os.environ.get("SSH_WS_HOST", "0.0.0.0")
-PORT = int(os.environ.get("SSH_WS_PORT", "8443"))
+PORT = int(os.environ.get("SSH_WS_PORT", "80"))
 BACKEND_HOST = os.environ.get("SSH_WS_BACKEND_HOST", "127.0.0.1")
 BACKEND_PORT = int(os.environ.get("SSH_WS_BACKEND_PORT", "22"))
 GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 async def read_http(reader):
     data = b""
-    while b"\r\n\r\n" not in data and len(data) < 16384:
-        chunk = await reader.read(1024)
+    while b"\r\n\r\n" not in data and len(data) < 65536:
+        chunk = await reader.read(2048)
         if not chunk:
             break
         data += chunk
@@ -197,6 +232,7 @@ def parse_headers(req):
 
 async def ws_recv(reader):
     head = await reader.readexactly(2)
+    opcode = head[0] & 0x0F
     length = head[1] & 0x7F
     if length == 126:
         length = struct.unpack("!H", await reader.readexactly(2))[0]
@@ -207,7 +243,7 @@ async def ws_recv(reader):
     payload = await reader.readexactly(length) if length else b""
     if masked:
         payload = bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
-    return head[0] & 0x0F, payload
+    return opcode, payload
 
 def ws_frame(payload):
     n = len(payload)
@@ -217,12 +253,26 @@ def ws_frame(payload):
         return bytes([0x82, 126]) + struct.pack("!H", n) + payload
     return bytes([0x82, 127]) + struct.pack("!Q", n) + payload
 
-async def proxy_ws_to_tcp(ws_reader, tcp_writer):
+async def tcp_to_ws(tcp_reader, ws_writer):
+    try:
+        while True:
+            data = await tcp_reader.read(8192)
+            if not data:
+                break
+            ws_writer.write(ws_frame(data))
+            await ws_writer.drain()
+    except Exception:
+        pass
+    finally:
+        ws_writer.close()
+
+async def ws_to_tcp(ws_reader, tcp_writer):
     try:
         while True:
             opcode, payload = await ws_recv(ws_reader)
-            if opcode in (0x8, 0x9, 0xA):
-                if opcode == 0x8: break
+            if opcode == 0x8:
+                break
+            if opcode in (0x9, 0xA):
                 continue
             tcp_writer.write(payload)
             await tcp_writer.drain()
@@ -231,30 +281,23 @@ async def proxy_ws_to_tcp(ws_reader, tcp_writer):
     finally:
         tcp_writer.close()
 
-async def proxy_tcp_to_ws(tcp_reader, ws_writer):
-    try:
-        while True:
-            data = await tcp_reader.read(4096)
-            if not data: break
-            ws_writer.write(ws_frame(data))
-            await ws_writer.drain()
-    except Exception:
-        pass
-    finally:
-        ws_writer.close()
-
 async def handle(reader, writer):
     req = await read_http(reader)
     headers = parse_headers(req)
     key = headers.get("sec-websocket-key", "")
     if not key:
-        writer.write(b"HTTP/1.1 400 Bad Request\r\n\r\n")
+        writer.write(b"HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n")
         await writer.drain(); writer.close(); return
     accept = base64.b64encode(hashlib.sha1((key + GUID).encode()).digest()).decode()
-    writer.write(("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + accept + "\r\n\r\n").encode())
+    writer.write((
+        "HTTP/1.1 101 Switching Protocols\r\n"
+        "Upgrade: websocket\r\n"
+        "Connection: Upgrade\r\n"
+        "Sec-WebSocket-Accept: " + accept + "\r\n\r\n"
+    ).encode())
     await writer.drain()
     tcp_reader, tcp_writer = await asyncio.open_connection(BACKEND_HOST, BACKEND_PORT)
-    await asyncio.gather(proxy_ws_to_tcp(reader, tcp_writer), proxy_tcp_to_ws(tcp_reader, writer))
+    await asyncio.gather(ws_to_tcp(reader, tcp_writer), tcp_to_ws(tcp_reader, writer))
 
 async def main():
     server = await asyncio.start_server(handle, HOST, PORT)
@@ -266,14 +309,14 @@ if __name__ == "__main__":
 PY
   chmod +x "${BIN_DIR}/ssh-ws"
   write_service "ssh-ws-extra" "[Unit]
-Description=3x-ui Extra SSH over WebSocket
-After=network-online.target
+Description=3x-ui Extra SSH over WebSocket for HTTP Custom
+After=network-online.target ssh.service sshd.service
 Wants=network-online.target
 
 [Service]
 Type=simple
 Environment=SSH_WS_PORT=${SSHWS_PORT}
-Environment=SSH_WS_BACKEND_HOST=127.0.0.1
+Environment=SSH_WS_BACKEND_HOST=${SSH_BACKEND_HOST}
 Environment=SSH_WS_BACKEND_PORT=${SSH_BACKEND_PORT}
 ExecStart=${BIN_DIR}/ssh-ws
 Restart=always
@@ -281,25 +324,28 @@ RestartSec=3
 
 [Install]
 WantedBy=multi-user.target"
-  systemctl restart ssh-ws-extra.service || warn "SSH-WS service did not start."
+  restart_service "ssh-ws-extra"
 }
 
 install_udp_custom() {
-  log "Installing UDP Custom / BadVPN udpgw"
-  local tmp="$(mktemp -d)"
-  if clone_with_fallback "$tmp/badvpn" \
-      "https://github.com/ambrop72/badvpn" \
-      "https://github.com/daynix/badvpn"; then
-    (cd "$tmp/badvpn" && cmake -DBUILD_NOTHING_BY_DEFAULT=1 -DBUILD_UDPGW=1 . && make -j"$(nproc || echo 1)") || warn "BadVPN source build failed."
+  log "Installing BadVPN udpgw on UDP gateway port ${UDP_CUSTOM_PORT}"
+  local tmp
+  tmp="$(mktemp -d)"
+
+  if command -v cmake >/dev/null 2>&1 && git clone --depth=1 https://github.com/ambrop72/badvpn "$tmp/badvpn" >/dev/null 2>&1; then
+    (cd "$tmp/badvpn" && cmake -DBUILD_NOTHING_BY_DEFAULT=1 -DBUILD_UDPGW=1 . && make -j"$(nproc 2>/dev/null || echo 1)") || warn "BadVPN source build failed."
     if [[ -x "$tmp/badvpn/udpgw/badvpn-udpgw" ]]; then
       install -m 0755 "$tmp/badvpn/udpgw/badvpn-udpgw" "${BIN_DIR}/badvpn-udpgw"
     fi
   fi
-  if [[ ! -x "${BIN_DIR}/badvpn-udpgw" ]]; then
-    warn "Falling back to distro badvpn package if available."
-    command -v badvpn-udpgw >/dev/null 2>&1 && cp "$(command -v badvpn-udpgw)" "${BIN_DIR}/badvpn-udpgw" || true
+
+  if [[ ! -x "${BIN_DIR}/badvpn-udpgw" ]] && command -v badvpn-udpgw >/dev/null 2>&1; then
+    install -m 0755 "$(command -v badvpn-udpgw)" "${BIN_DIR}/badvpn-udpgw"
   fi
-  [[ -x "${BIN_DIR}/badvpn-udpgw" ]] || warn "badvpn-udpgw binary unavailable; install cmake and re-run if needed."
+
+  rm -rf "$tmp"
+  [[ -x "${BIN_DIR}/badvpn-udpgw" ]] || die "badvpn-udpgw binary unavailable. Install/build BadVPN and re-run."
+
   write_service "udp-custom-extra" "[Unit]
 Description=3x-ui Extra UDP Custom BadVPN Gateway
 After=network-online.target
@@ -313,84 +359,139 @@ RestartSec=3
 
 [Install]
 WantedBy=multi-user.target"
-  systemctl restart udp-custom-extra.service || warn "UDP Custom service did not start."
-  rm -rf "$tmp"
+  restart_service "udp-custom-extra"
 }
 
-install_slowdns() {
-  log "Installing SlowDNS (DNSTT) from ${DNSTT_REPO}"
-  local tmp="$(mktemp -d)"
-  clone_with_fallback "$tmp/dnstt" "$DNSTT_REPO" "https://github.com/powermx/dnstt.git" || { warn "DNSTT clone failed."; rm -rf "$tmp"; return; }
-  (cd "$tmp/dnstt" && go build -o "${BIN_DIR}/dnstt-server" ./dnstt-server && go build -o "${BIN_DIR}/dnstt-client" ./dnstt-client) || warn "DNSTT build failed."
-  chmod +x "${BIN_DIR}/dnstt-server" "${BIN_DIR}/dnstt-client" 2>/dev/null || true
-  if [[ ! -s /etc/dnstt/server.key || ! -s /etc/dnstt/server.pub ]]; then
-    if [[ -x "${BIN_DIR}/dnstt-server" ]]; then
-      "${BIN_DIR}/dnstt-server" -gen-key -privkey-file /etc/dnstt/server.key -pubkey-file /etc/dnstt/server.pub || true
-    fi
+generate_openvpn_pki() {
+  local dir="/etc/openvpn/3x-ui"
+  local ca_key="${dir}/ca.key"
+  local ca_crt="${dir}/ca.crt"
+  local srv_key="${dir}/server.key"
+  local srv_crt="${dir}/server.crt"
+  local dh="${dir}/dh.pem"
+
+  if [[ ! -s "$ca_crt" || ! -s "$ca_key" ]]; then
+    openssl genrsa -out "$ca_key" 2048 >/dev/null 2>&1
+    openssl req -x509 -new -nodes -key "$ca_key" -sha256 -days 3650 -out "$ca_crt" -subj "/CN=3x-ui-openvpn-ca" >/dev/null 2>&1
   fi
-  cat > /etc/dnstt/README.extra <<EOF_DNSTT
-Set your NS/domain in the panel user's Protocol Config Payload as JSON, for example:
-{"domain":"dns.example.com","publicKey":"$(cat /etc/dnstt/server.pub 2>/dev/null || true)"}
-EOF_DNSTT
-  write_service "slowdns-extra" "[Unit]
-Description=3x-ui Extra SlowDNS DNSTT Server
+  if [[ ! -s "$srv_crt" || ! -s "$srv_key" ]]; then
+    openssl genrsa -out "$srv_key" 2048 >/dev/null 2>&1
+    openssl req -new -key "$srv_key" -out "${dir}/server.csr" -subj "/CN=3x-ui-openvpn-server" >/dev/null 2>&1
+    openssl x509 -req -in "${dir}/server.csr" -CA "$ca_crt" -CAkey "$ca_key" -CAcreateserial -out "$srv_crt" -days 3650 -sha256 >/dev/null 2>&1
+  fi
+  [[ -s "$dh" ]] || openssl dhparam -out "$dh" 2048 >/dev/null 2>&1 || true
+  chmod 600 "$ca_key" "$srv_key" 2>/dev/null || true
+}
+
+configure_openvpn() {
+  log "Configuring OpenVPN TCP/UDP on port ${OPENVPN_PORT}"
+  local openvpn_bin
+  openvpn_bin="$(command -v openvpn || true)"
+  [[ -n "$openvpn_bin" ]] || die "openvpn binary was not found after package installation."
+  generate_openvpn_pki
+
+  cat > /etc/openvpn/3x-ui/server-udp.conf <<EOF_OVPN_UDP
+port ${OPENVPN_PORT}
+proto udp
+dev tun-3xui-udp
+ca /etc/openvpn/3x-ui/ca.crt
+cert /etc/openvpn/3x-ui/server.crt
+key /etc/openvpn/3x-ui/server.key
+dh /etc/openvpn/3x-ui/dh.pem
+server 10.88.0.0 255.255.255.0
+ifconfig-pool-persist /etc/openvpn/3x-ui/ipp-udp.txt
+keepalive 10 120
+cipher AES-128-CBC
+data-ciphers AES-128-CBC
+auth SHA256
+persist-key
+persist-tun
+user nobody
+group nogroup
+status /var/log/3x-ui-extra/openvpn-udp-status.log
+verb 3
+EOF_OVPN_UDP
+
+  cat > /etc/openvpn/3x-ui/server-tcp.conf <<EOF_OVPN_TCP
+port ${OPENVPN_PORT}
+proto tcp-server
+dev tun-3xui-tcp
+ca /etc/openvpn/3x-ui/ca.crt
+cert /etc/openvpn/3x-ui/server.crt
+key /etc/openvpn/3x-ui/server.key
+dh /etc/openvpn/3x-ui/dh.pem
+server 10.89.0.0 255.255.255.0
+ifconfig-pool-persist /etc/openvpn/3x-ui/ipp-tcp.txt
+keepalive 10 120
+cipher AES-128-CBC
+data-ciphers AES-128-CBC
+auth SHA256
+persist-key
+persist-tun
+user nobody
+group nogroup
+status /var/log/3x-ui-extra/openvpn-tcp-status.log
+verb 3
+EOF_OVPN_TCP
+
+  if ! getent group nogroup >/dev/null 2>&1; then
+    sed -i 's/^group nogroup/group nobody/' /etc/openvpn/3x-ui/server-*.conf 2>/dev/null || true
+  fi
+
+  write_service "openvpn-3x-ui-udp" "[Unit]
+Description=3x-ui Extra OpenVPN UDP
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=${BIN_DIR}/dnstt-server -udp :${SLOWDNS_PORT} -privkey-file /etc/dnstt/server.key 127.0.0.1:${SSH_BACKEND_PORT}
-Restart=always
-RestartSec=3
-
-[Install]
-WantedBy=multi-user.target"
-  systemctl restart slowdns-extra.service || warn "SlowDNS service did not start; configure NS/domain and check logs."
-  rm -rf "$tmp"
-}
-
-install_psiphon() {
-  log "Installing Psiphon from approved repositories"
-  local tmp="$(mktemp -d)"
-  clone_with_fallback "$tmp/psiphon" "${PSIPHON_REPOS[@]}" || { warn "Psiphon clone failed."; rm -rf "$tmp"; return; }
-  if find "$tmp/psiphon" -name go.mod -print -quit | grep -q .; then
-    local moddir
-    moddir="$(dirname "$(find "$tmp/psiphon" -name go.mod -print -quit)")"
-    (cd "$moddir" && go build -o "${BIN_DIR}/psiphon-server" ./... ) || warn "Psiphon Go build failed; repository layout may require manual build."
-  fi
-  if [[ ! -x "${BIN_DIR}/psiphon-server" ]]; then
-    cat > "${BIN_DIR}/psiphon-server" <<'SH'
-#!/usr/bin/env bash
-echo "Psiphon server binary was not built automatically. Please build from /opt/psiphon or the approved repo and replace this stub." >&2
-sleep infinity
-SH
-    chmod +x "${BIN_DIR}/psiphon-server"
-  fi
-  mkdir -p /opt
-  rm -rf /opt/psiphon
-  cp -a "$tmp/psiphon" /opt/psiphon
-  cat > /etc/psiphon/server.json <<EOF_PSIPHON
-{
-  "listen_port": ${PSIPHON_PORT},
-  "ssh_port": ${SSH_BACKEND_PORT},
-  "web_server_port": ${PSIPHON_PORT}
-}
-EOF_PSIPHON
-  write_service "psiphon-extra" "[Unit]
-Description=3x-ui Extra Psiphon Server
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-ExecStart=${BIN_DIR}/psiphon-server -config /etc/psiphon/server.json
+ExecStart=${openvpn_bin} --config /etc/openvpn/3x-ui/server-udp.conf
 Restart=always
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target"
-  systemctl restart psiphon-extra.service || warn "Psiphon service did not start; inspect /opt/psiphon for repo-specific build steps."
-  rm -rf "$tmp"
+
+  write_service "openvpn-3x-ui-tcp" "[Unit]
+Description=3x-ui Extra OpenVPN TCP
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=${openvpn_bin} --config /etc/openvpn/3x-ui/server-tcp.conf
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target"
+
+  sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1 || true
+  printf 'net.ipv4.ip_forward=1\n' > /etc/sysctl.d/99-3x-ui-extra.conf
+  restart_service "openvpn-3x-ui-udp"
+  restart_service "openvpn-3x-ui-tcp"
+}
+
+print_summary() {
+  cat <<EOF_SUMMARY
+
+Installation complete.
+
+HTTP Custom fields generated by the panel now map to:
+  SSH Account:        SERVER:22@USER:PASS or SERVER:143@USER:PASS
+  SSL/Stunnel:        SERVER:443@USER:PASS with SNI SERVER/DOMAIN
+  SSH-WS RemoteProxy: SERVER:80@USER:PASS plus WebSocket payload
+  UDP Custom:         SSH account + UDP Gateway Port ${UDP_CUSTOM_PORT}
+  OpenVPN:            remote SERVER ${OPENVPN_PORT}, cipher AES-128-CBC, <ca> tags
+
+Service names:
+  dropbear-extra stunnel-extra ssh-ws-extra udp-custom-extra
+  openvpn-3x-ui-udp openvpn-3x-ui-tcp
+
+Tune ports before running with env vars:
+  DROPBEAR_PORTS, DROPBEAR_BACKEND_PORT, STUNNEL_PORTS, SSHWS_PORT,
+  SSH_BACKEND_HOST, SSH_BACKEND_PORT, OPENSSH_PORT, UDP_CUSTOM_PORT, OPENVPN_PORT
+EOF_SUMMARY
 }
 
 main() {
@@ -399,19 +500,16 @@ main() {
   pm="$(detect_pkg_manager)"
   ensure_dirs
   pkg_bootstrap "$pm"
-  # cmake is only needed for BadVPN source builds; install best-effort.
-  install_packages "$pm" cmake >/dev/null 2>&1 || true
 
-  configure_ssh
+  configure_openssh_backend
   configure_dropbear
   configure_stunnel
   install_ssh_ws
   install_udp_custom
-  install_slowdns
-  install_psiphon
+  configure_openvpn
 
   systemctl daemon-reload
-  log "Installation complete. Tune ports with env vars before running if needed: SSH_PORT, DROPBEAR_PORT, STUNNEL_PORT, SSHWS_PORT, UDP_CUSTOM_PORT, SLOWDNS_PORT, PSIPHON_PORT."
+  print_summary
 }
 
 main "$@"

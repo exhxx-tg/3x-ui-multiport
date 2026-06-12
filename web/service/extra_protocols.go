@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"sort"
@@ -28,13 +29,13 @@ func (s *ExtraProtocolsService) MigrateDB() error {
 	}
 
 	defaults := []entity.ExtraSetting{
-		{ProtocolName: "SSH", ListeningPort: 2222, IsEnabled: false},
-		{ProtocolName: "SSWS", ListeningPort: 8443, IsEnabled: false},
+		{ProtocolName: "SSH", ListeningPort: 22, IsEnabled: false},
+		{ProtocolName: "SSWS", ListeningPort: 80, IsEnabled: false},
 		{ProtocolName: "SLOW-DNS", ListeningPort: 5353, IsEnabled: false},
 		{ProtocolName: "Psiphon", ListeningPort: 443, IsEnabled: false},
 		{ProtocolName: "UDP Custom (BadVPN)", ListeningPort: 7300, IsEnabled: false},
-		{ProtocolName: "Dropbear", ListeningPort: 2223, IsEnabled: false},
-		{ProtocolName: "SSL (Stunnel)", ListeningPort: 444, IsEnabled: false},
+		{ProtocolName: "Dropbear", ListeningPort: 143, IsEnabled: false},
+		{ProtocolName: "SSL (Stunnel)", ListeningPort: 443, IsEnabled: false},
 		{ProtocolName: "OpenVPN", ListeningPort: 1194, IsEnabled: false},
 		{ProtocolName: "Squid", ListeningPort: 3128, IsEnabled: false},
 		{ProtocolName: "OHP", ListeningPort: 80, IsEnabled: false},
@@ -91,11 +92,21 @@ func (s *ExtraProtocolsService) BuildConnectionDetails(user entity.ExtraUser, se
 	var config string
 	switch strings.ToUpper(protocol) {
 	case "SSH":
-		config = fmt.Sprintf("%s:%d@%s:%s", serverHost, port, user.Username, user.Password)
-		details["Connection"] = config
+		account := sshAccount(serverHost, port, user.Username, user.Password)
+		config = joinConfigLines(
+			"HTTP Custom - SSH",
+			fmt.Sprintf("SSH Account: %s", account),
+		)
+		details["SSH Account"] = account
 	case "DROPBEAR":
-		config = fmt.Sprintf("dropbear://%s:%s@%s:%d", user.Username, user.Password, serverHost, port)
-		details["Connection"] = fmt.Sprintf("%s:%d@%s:%s", serverHost, port, user.Username, user.Password)
+		account := sshAccount(serverHost, port, user.Username, user.Password)
+		config = joinConfigLines(
+			"HTTP Custom - Dropbear SSH",
+			fmt.Sprintf("SSH Account: %s", account),
+			fmt.Sprintf("Alternative SSH Account: %s", sshAccount(serverHost, 22, user.Username, user.Password)),
+		)
+		details["SSH Account"] = account
+		details["Alternative SSH Account"] = sshAccount(serverHost, 22, user.Username, user.Password)
 	case "SSWS", "SSH-WS":
 		path := firstPayloadValue(payload, "path", "wsPath", "websocketPath")
 		if path == "" {
@@ -105,57 +116,172 @@ func (s *ExtraProtocolsService) BuildConnectionDetails(user entity.ExtraUser, se
 		if hostHeader == "" {
 			hostHeader = serverHost
 		}
+		wsPort := payloadInt(payload, 80, "port", "wsPort", "remoteProxyPort")
 		payloadText := fmt.Sprintf("GET %s HTTP/1.1[crlf]Host: %s[crlf]Upgrade: websocket[crlf][crlf]", path, hostHeader)
-		config = fmt.Sprintf("sshws://%s:%s@%s:%d?path=%s&host=%s", user.Username, user.Password, serverHost, port, path, hostHeader)
+		remoteProxy := sshAccount(serverHost, wsPort, user.Username, user.Password)
+		config = joinConfigLines(
+			"HTTP Custom - SSH-WS (Payload)",
+			fmt.Sprintf("Remote Proxy: %s", remoteProxy),
+			fmt.Sprintf("Payload: %s", payloadText),
+		)
+		details["Remote Proxy"] = remoteProxy
 		details["Payload"] = payloadText
 		details["WebSocket Path"] = path
 		details["Host Header"] = hostHeader
 	case "SLOW-DNS":
 		domain := firstPayloadValue(payload, "domain", "ns", "nameserver")
 		if domain == "" {
-			domain = "your-ns-domain.example.com"
+			domain = generatedNameserver(serverHost)
 		}
 		publicKey := firstPayloadValue(payload, "publicKey", "pubKey", "dnsttKey", "key")
 		if publicKey == "" {
 			publicKey = readFirstExistingFile("/etc/dnstt/server.pub", "/etc/3x-ui/extra/dnstt.pub")
 		}
 		if publicKey == "" {
-			publicKey = "DNSTT_PUBLIC_KEY_NOT_SET"
+			publicKey = "GENERATED_PUBKEY_NOT_SET"
 		}
-		config = fmt.Sprintf("dnstt://%s:%s@%s:%d?domain=%s&pubkey=%s", user.Username, user.Password, serverHost, port, domain, publicKey)
+		account := sshAccount(serverHost, 22, user.Username, user.Password)
+		config = joinConfigLines(
+			"HTTP Custom - SlowDNS",
+			fmt.Sprintf("SSH Account: %s", account),
+			fmt.Sprintf("Nameserver (NS): %s", domain),
+			fmt.Sprintf("Public Key (Pubkey): %s", publicKey),
+		)
+		details["SSH Account"] = account
 		details["DNSTT Domain/NS"] = domain
 		details["DNSTT Public Key"] = publicKey
-		details["Client Command"] = fmt.Sprintf("dnstt-client -udp %s:%d -pubkey %s %s 127.0.0.1:2222", serverHost, port, publicKey, domain)
+		details["Client Command"] = fmt.Sprintf("dnstt-client -udp %s:%d -pubkey %s %s 127.0.0.1:22", serverHost, port, publicKey, domain)
 	case "PSIPHON":
 		serverEntry := firstPayloadValue(payload, "serverEntry", "entry", "config")
 		if serverEntry == "" {
-			serverEntry = fmt.Sprintf("psiphon://%s:%s@%s:%d", user.Username, user.Password, serverHost, port)
+			serverEntry = "PASTE_PSIPHON_SERVER_ENTRY_HERE"
 		}
-		config = serverEntry
+		config = joinConfigLines(
+			"HTTP Custom - Psiphon",
+			fmt.Sprintf("Server Entry: %s", serverEntry),
+		)
 		details["Server Entry"] = serverEntry
 	case "UDP CUSTOM (BADVPN)", "UDP CUSTOM":
-		config = fmt.Sprintf("udp-custom://%s:%s@%s:%d", user.Username, user.Password, serverHost, port)
-		details["BadVPN Gateway"] = fmt.Sprintf("%s:%d", serverHost, port)
+		sshPort := payloadInt(payload, 22, "sshPort", "accountPort")
+		udpGatewayPort := payloadInt(payload, 7300, "udpGatewayPort", "udpgwPort", "gatewayPort")
+		account := sshAccount(serverHost, sshPort, user.Username, user.Password)
+		config = joinConfigLines(
+			"HTTP Custom - UDP Custom",
+			fmt.Sprintf("SSH Account: %s", account),
+			fmt.Sprintf("UDP Gateway Port: %d", udpGatewayPort),
+		)
+		details["SSH Account"] = account
+		details["UDP Gateway Port"] = fmt.Sprintf("%d", udpGatewayPort)
+		details["BadVPN Gateway"] = fmt.Sprintf("%s:%d", serverHost, udpGatewayPort)
 	case "SSL (STUNNEL)", "STUNNEL":
 		sni := firstPayloadValue(payload, "sni", "host")
 		if sni == "" {
 			sni = serverHost
 		}
-		config = fmt.Sprintf("stunnel://%s:%s@%s:%d?sni=%s", user.Username, user.Password, serverHost, port, sni)
+		sslPort := payloadInt(payload, 443, "sslPort", "stunnelPort", "port")
+		account := sshAccount(serverHost, sslPort, user.Username, user.Password)
+		config = joinConfigLines(
+			"HTTP Custom - SSL/Stunnel",
+			fmt.Sprintf("SSH Account: %s", account),
+			fmt.Sprintf("SNI (Server Name Indication): %s", sni),
+		)
 		details["TLS/SNI"] = sni
-		details["SSH over TLS"] = fmt.Sprintf("%s:%d@%s:%s", serverHost, port, user.Username, user.Password)
+		details["SSH Account"] = account
 	case "OPENVPN":
-		config = fmt.Sprintf("openvpn://%s:%s@%s:%d", user.Username, user.Password, serverHost, port)
+		openVPNPort := payloadInt(payload, 1194, "openvpnPort", "vpnPort", "port")
+		config = buildOpenVPNClientTemplate(serverHost, openVPNPort, user.Username, user.Password)
+		details["Remote"] = fmt.Sprintf("%s:%d", serverHost, openVPNPort)
+		details["Cipher"] = "AES-128-CBC"
 	case "SQUID":
-		config = fmt.Sprintf("http-proxy://%s:%s@%s:%d", user.Username, user.Password, serverHost, port)
+		config = joinConfigLines(
+			"HTTP Custom - Squid Proxy",
+			fmt.Sprintf("Proxy Host: %s", serverHost),
+			fmt.Sprintf("Proxy Port: %d", port),
+			fmt.Sprintf("Username: %s", user.Username),
+			fmt.Sprintf("Password: %s", user.Password),
+		)
 	case "OHP":
-		config = fmt.Sprintf("ohp://%s:%s@%s:%d", user.Username, user.Password, serverHost, port)
+		config = joinConfigLines(
+			"HTTP Custom - OHP",
+			fmt.Sprintf("SSH Account: %s", sshAccount(serverHost, 22, user.Username, user.Password)),
+			fmt.Sprintf("OHP Port: %d", port),
+		)
 	default:
-		config = fmt.Sprintf("%s:%d@%s:%s", serverHost, port, user.Username, user.Password)
+		config = joinConfigLines(
+			"HTTP Custom - Generic SSH",
+			fmt.Sprintf("SSH Account: %s", sshAccount(serverHost, port, user.Username, user.Password)),
+		)
 	}
 
 	details["Config"] = config
 	return config, orderedDetails(details)
+}
+
+func joinConfigLines(lines ...string) string {
+	cleaned := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimRight(line, " \t")
+		if strings.TrimSpace(line) != "" {
+			cleaned = append(cleaned, line)
+		}
+	}
+	return strings.Join(cleaned, "\n")
+}
+
+func sshAccount(serverHost string, port int, username, password string) string {
+	return fmt.Sprintf("%s:%d@%s:%s", serverHost, port, username, password)
+}
+
+func payloadInt(payload map[string]string, fallback int, keys ...string) int {
+	for _, key := range keys {
+		value := strings.TrimSpace(payload[key])
+		if value == "" {
+			continue
+		}
+		var parsed int
+		if _, err := fmt.Sscanf(value, "%d", &parsed); err == nil && parsed > 0 && parsed <= 65535 {
+			return parsed
+		}
+	}
+	return fallback
+}
+
+func generatedNameserver(serverHost string) string {
+	serverHost = strings.TrimSpace(strings.Trim(serverHost, "[]"))
+	if serverHost == "" || serverHost == "YOUR_SERVER_IP" || net.ParseIP(serverHost) != nil {
+		return "GENERATED_NS_NOT_SET"
+	}
+	return "ns." + serverHost
+}
+
+func buildOpenVPNClientTemplate(serverHost string, port int, username, password string) string {
+	ca := readFirstExistingFile("/etc/openvpn/3x-ui/ca.crt", "/etc/openvpn/ca.crt", "/etc/3x-ui/extra/openvpn-ca.crt")
+	if ca == "" {
+		ca = "-----BEGIN CERTIFICATE-----\nPASTE_CA_CERTIFICATE_HERE\n-----END CERTIFICATE-----"
+	}
+
+	return joinConfigLines(
+		"# OpenVPN client template",
+		fmt.Sprintf("# Username: %s", username),
+		fmt.Sprintf("# Password: %s", password),
+		"client",
+		"dev tun",
+		"proto udp",
+		fmt.Sprintf("remote %s %d", serverHost, port),
+		"resolv-retry infinite",
+		"nobind",
+		"persist-key",
+		"persist-tun",
+		"remote-cert-tls server",
+		"auth-user-pass",
+		"cipher AES-128-CBC",
+		"data-ciphers AES-128-CBC",
+		"auth SHA256",
+		"verb 3",
+		"<ca>",
+		ca,
+		"</ca>",
+	)
 }
 
 func parseExtraPayload(raw string) map[string]string {
@@ -201,9 +327,9 @@ func formatExtraExpiry(expiry int64) string {
 func defaultExtraProtocolPort(protocol string) int {
 	switch strings.ToUpper(strings.TrimSpace(protocol)) {
 	case "SSH":
-		return 2222
+		return 22
 	case "SSWS", "SSH-WS":
-		return 8443
+		return 80
 	case "SLOW-DNS":
 		return 5353
 	case "PSIPHON":
@@ -211,9 +337,9 @@ func defaultExtraProtocolPort(protocol string) int {
 	case "UDP CUSTOM (BADVPN)", "UDP CUSTOM":
 		return 7300
 	case "DROPBEAR":
-		return 2223
+		return 143
 	case "SSL (STUNNEL)", "STUNNEL":
-		return 444
+		return 443
 	case "OPENVPN":
 		return 1194
 	case "SQUID":

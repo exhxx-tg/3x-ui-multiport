@@ -126,6 +126,14 @@
   background: rgba(2, 6, 23, 0.18);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.config-preview pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: inherit;
 }
 
 .settings-grid {
