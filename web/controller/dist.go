@@ -96,3 +96,11 @@ func serveDistPage(c *gin.Context, name string) {
 	c.Header("Last-Modified", distPageBuildTime.UTC().Format(http.TimeFormat))
 	c.Data(http.StatusOK, "text/html; charset=utf-8", out)
 }
+
+// ServePanelSPA serves the embedded React panel shell for web-level fallback
+// routing. It intentionally keeps the dist-page implementation centralized in
+// this package so CSRF/base-path injection stays identical for explicit routes
+// and browser deep-link reloads.
+func ServePanelSPA(c *gin.Context) {
+	serveDistPage(c, "index.html")
+}

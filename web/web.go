@@ -245,8 +245,21 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 		c.JSON(http.StatusOK, gin.H{})
 	})
 
-	// Add a catch-all route to handle undefined paths and return 404
+	// Let direct reloads/deep links inside the React panel return the SPA shell
+	// without swallowing API, WebSocket, assets, login, or subscription routes.
 	engine.NoRoute(func(c *gin.Context) {
+		if c.Request.Method == http.MethodGet {
+			path := c.Request.URL.Path
+			if strings.HasPrefix(path, basePath+"panel/") &&
+				!strings.HasPrefix(path, basePath+"panel/api/") &&
+				!strings.HasPrefix(path, basePath+"panel/setting/") &&
+				!strings.HasPrefix(path, basePath+"panel/xray/") &&
+				!strings.HasPrefix(path, basePath+"panel/extra/") &&
+				!strings.HasPrefix(path, basePath+"panel/ws") {
+				controller.ServePanelSPA(c)
+				return
+			}
+		}
 		c.AbortWithStatus(http.StatusNotFound)
 	})
 

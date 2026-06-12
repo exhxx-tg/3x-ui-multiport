@@ -17,7 +17,16 @@ import { PlusOutlined, DeleteOutlined, EditOutlined, ReloadOutlined } from '@ant
 import { HttpUtil } from '@/utils';
 import axios from 'axios';
 
-const JSON_HEADERS = { headers: { 'Content-Type': 'application/json' } };
+const JSON_HEADERS = { headers: { 'Content-Type': 'application/json' } } as const;
+
+type ExtraUserPayload = {
+  username: string;
+  password: string;
+  protocolType: string;
+  expiryDate: number;
+  status: string;
+  configPayload: string;
+};
 
 interface ExtraUser {
   id: number;
@@ -63,10 +72,26 @@ export default function ExtraProtocolsPage() {
     fetchAll();
   }, [fetchAll]);
 
+  const buildUserPayload = (values: Record<string, unknown>): ExtraUserPayload => {
+    const rawExpiry = values.expiryDate;
+    const expiryDate = rawExpiry === undefined || rawExpiry === null || rawExpiry === ''
+      ? 0
+      : Number.parseInt(String(rawExpiry), 10);
+
+    return {
+      username: String(values.username ?? '').trim(),
+      password: String(values.password ?? ''),
+      protocolType: String(values.protocolType ?? ''),
+      expiryDate: Number.isFinite(expiryDate) ? expiryDate : 0,
+      status: String(values.status ?? 'active'),
+      configPayload: String(values.configPayload ?? ''),
+    };
+  };
+
   const handleAddUser = async () => {
     try {
       const values = await form.validateFields();
-      const msg = await HttpUtil.post('/panel/api/extra/users', values, JSON_HEADERS);
+      const msg = await HttpUtil.post('/panel/api/extra/users', JSON.stringify(buildUserPayload(values)), JSON_HEADERS);
       if (msg?.success) {
         message.success(t('success'));
         setModalVisible(false);
@@ -84,7 +109,7 @@ export default function ExtraProtocolsPage() {
     try {
       const values = await form.validateFields();
       if (!editingUser) return;
-      const response = await axios.put(`/panel/api/extra/users/${editingUser.id}`, values, JSON_HEADERS);
+      const response = await axios.put(`/panel/api/extra/users/${editingUser.id}`, JSON.stringify(buildUserPayload(values)), JSON_HEADERS);
       const msg = response.data;
       if (msg?.success) {
         message.success(t('success'));
@@ -117,7 +142,14 @@ export default function ExtraProtocolsPage() {
 
   const handleUpdateSetting = async (protocolName: string, port: number, enabled: boolean, bannerText?: string) => {
     try {
-      const response = await axios.put('/panel/api/extra/settings', { protocolName, listeningPort: port, isEnabled: enabled, bannerText }, JSON_HEADERS);
+      const safePort = Number.parseInt(String(port), 10);
+      const payload = {
+        protocolName,
+        listeningPort: Number.isFinite(safePort) ? safePort : 0,
+        isEnabled: Boolean(enabled),
+        bannerText: bannerText ?? '',
+      };
+      const response = await axios.put('/panel/api/extra/settings', JSON.stringify(payload), JSON_HEADERS);
       const msg = response.data;
       if (msg?.success) {
         message.success(t('success'));
@@ -190,7 +222,7 @@ export default function ExtraProtocolsPage() {
                       defaultValue={s.listeningPort}
                       style={{ width: 120 }}
                       onPressEnter={(e: any) => {
-                        const val = parseInt((e.target as HTMLInputElement).value);
+                        const val = Number.parseInt((e.target as HTMLInputElement).value, 10);
                         handleUpdateSetting(s.protocolName, val, s.isEnabled);
                       }}
                     />
@@ -259,6 +291,9 @@ export default function ExtraProtocolsPage() {
           </Form.Item>
           <Form.Item name="expiryDate" label="Expiry (Unix Timestamp)">
             <Input type="number" />
+          </Form.Item>
+          <Form.Item name="configPayload" label="Protocol Config Payload">
+            <Input.TextArea rows={3} />
           </Form.Item>
           <Form.Item name="status" label="Status">
             <Select options={[

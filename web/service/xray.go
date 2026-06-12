@@ -252,6 +252,9 @@ func (s *XrayService) GetXrayConfig() (*xraytype.Config, error) {
 		inboundConfig := inbound.GenXrayInboundConfig()
 		xrayConfig.InboundConfigs = append(xrayConfig.InboundConfigs, *inboundConfig)
 	}
+	if err := xray.InjectExtraProtocolsFallbacks(xrayConfig); err != nil {
+		logger.Warningf("Failed to inject extra protocols fallbacks: %s", err)
+	}
 	return xrayConfig, nil
 }
 

@@ -8,19 +8,19 @@ import (
 
 // Config represents the full Xray configuration.
 type Config struct {
-	LogConfig       json_util.RawMessage `json:"log"`
-	RouterConfig    json_util.RawMessage `json:"routing"`
-	OutboundConfigs json_util.RawMessage `json:"outbounds"`
-	DNSConfig       json_util.RawMessage `json:"dns"`
-	Transport       json_util.RawMessage `json:"transport"`
-	Policy          json_util.RawMessage `json:"policy"`
-	API             json_util.RawMessage `json:"api"`
-	Stats           json_util.RawMessage `json:"stats"`
-	Metrics         json_util.RawMessage `json:"metrics"`
-	Reverse         json_util.RawMessage `json:"reverse"`
-	FakeDNS         json_util.RawMessage `json:"fakedns"`
-	BurstObservatory json_util.RawMessage `json:"burstObservatory"`
-	InboundConfigs  []InboundConfig      `json:"inbounds"`
+	LogConfig        json_util.RawMessage `json:"log,omitempty"`
+	RouterConfig     json_util.RawMessage `json:"routing,omitempty"`
+	OutboundConfigs  json_util.RawMessage `json:"outbounds,omitempty"`
+	DNSConfig        json_util.RawMessage `json:"dns,omitempty"`
+	Transport        json_util.RawMessage `json:"transport,omitempty"`
+	Policy           json_util.RawMessage `json:"policy,omitempty"`
+	API              json_util.RawMessage `json:"api,omitempty"`
+	Stats            json_util.RawMessage `json:"stats,omitempty"`
+	Metrics          json_util.RawMessage `json:"metrics,omitempty"`
+	Reverse          json_util.RawMessage `json:"reverse,omitempty"`
+	FakeDNS          json_util.RawMessage `json:"fakedns,omitempty"`
+	BurstObservatory json_util.RawMessage `json:"burstObservatory,omitempty"`
+	InboundConfigs   []InboundConfig      `json:"inbounds"`
 }
 
 // Equals compares two Config instances for deep equality.

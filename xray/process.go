@@ -325,9 +325,16 @@ func (p *process) Start() (err error) {
 		}
 	}()
 
+	if err := InjectExtraProtocolsFallbacks(p.config); err != nil {
+		logger.Warningf("Failed to inject extra protocols fallbacks: %s", err)
+	}
+
 	data, err := json.MarshalIndent(p.config, "", "  ")
 	if err != nil {
 		return common.NewErrorf("Failed to generate XRAY configuration files: %v", err)
+	}
+	if !json.Valid(data) {
+		return common.NewError("Failed to generate XRAY configuration files: invalid JSON")
 	}
 
 	err = os.MkdirAll(config.GetLogFolder(), 0o770)
@@ -344,9 +351,20 @@ func (p *process) Start() (err error) {
 			return common.NewErrorf("Failed to create configuration folder: %v", err)
 		}
 	}
-	err = os.WriteFile(configPath, data, 0644)
+	tmpConfigPath := configPath + ".tmp"
+	err = os.WriteFile(tmpConfigPath, data, 0644)
 	if err != nil {
 		return common.NewErrorf("Failed to write configuration file: %v", err)
+	}
+	if err := os.Rename(tmpConfigPath, configPath); err != nil {
+		if runtime.GOOS == "windows" {
+			_ = os.Remove(configPath)
+			err = os.Rename(tmpConfigPath, configPath)
+		}
+		if err != nil {
+			_ = os.Remove(tmpConfigPath)
+			return common.NewErrorf("Failed to finalize configuration file: %v", err)
+		}
 	}
 
 	cmd := exec.Command(GetBinaryPath(), "-c", configPath)
