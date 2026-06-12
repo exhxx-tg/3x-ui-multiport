@@ -17,6 +17,8 @@ import { PlusOutlined, DeleteOutlined, EditOutlined, ReloadOutlined } from '@ant
 import { HttpUtil } from '@/utils';
 import axios from 'axios';
 
+const JSON_HEADERS = { headers: { 'Content-Type': 'application/json' } };
+
 interface ExtraUser {
   id: number;
   username: string;
@@ -64,7 +66,7 @@ export default function ExtraProtocolsPage() {
   const handleAddUser = async () => {
     try {
       const values = await form.validateFields();
-      const msg = await HttpUtil.post('/panel/api/extra/users', JSON.stringify(values));
+      const msg = await HttpUtil.post('/panel/api/extra/users', values, JSON_HEADERS);
       if (msg?.success) {
         message.success(t('success'));
         setModalVisible(false);
@@ -82,7 +84,7 @@ export default function ExtraProtocolsPage() {
     try {
       const values = await form.validateFields();
       if (!editingUser) return;
-      const response = await axios.put(`/panel/api/extra/users/${editingUser.id}`, values);
+      const response = await axios.put(`/panel/api/extra/users/${editingUser.id}`, values, JSON_HEADERS);
       const msg = response.data;
       if (msg?.success) {
         message.success(t('success'));
@@ -115,7 +117,7 @@ export default function ExtraProtocolsPage() {
 
   const handleUpdateSetting = async (protocolName: string, port: number, enabled: boolean, bannerText?: string) => {
     try {
-      const response = await axios.put('/panel/api/extra/settings', { protocolName, listeningPort: port, isEnabled: enabled, bannerText });
+      const response = await axios.put('/panel/api/extra/settings', { protocolName, listeningPort: port, isEnabled: enabled, bannerText }, JSON_HEADERS);
       const msg = response.data;
       if (msg?.success) {
         message.success(t('success'));

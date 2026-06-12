@@ -330,17 +330,6 @@ func (p *process) Start() (err error) {
 		return common.NewErrorf("Failed to generate XRAY configuration files: %v", err)
 	}
 
-	// Inject Extra Protocols Fallbacks before writing the file
-	if err := InjectExtraProtocolsFallbacks(p.config); err != nil {
-		logger.Warningf("Failed to inject extra protocols fallbacks: %s", err)
-	}
-
-	// Re-marshal after injection
-	data, err = json.MarshalIndent(p.config, "", "  ")
-	if err != nil {
-		return common.NewErrorf("Failed to generate XRAY configuration files after fallback injection: %v", err)
-	}
-
 	err = os.MkdirAll(config.GetLogFolder(), 0o770)
 	if err != nil {
 		logger.Warningf("Failed to create log folder: %s", err)
