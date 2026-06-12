@@ -339,6 +339,11 @@ func (p *process) Start() (err error) {
 	if p.configPath != "" {
 		configPath = p.configPath
 	}
+	if configDir := filepath.Dir(configPath); configDir != "." && configDir != "" {
+		if err := os.MkdirAll(configDir, 0o770); err != nil {
+			return common.NewErrorf("Failed to create configuration folder: %v", err)
+		}
+	}
 	err = os.WriteFile(configPath, data, 0644)
 	if err != nil {
 		return common.NewErrorf("Failed to write configuration file: %v", err)
