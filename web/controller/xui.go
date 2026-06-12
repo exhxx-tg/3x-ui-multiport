@@ -14,8 +14,9 @@ import (
 type XUIController struct {
 	BaseController
 
-	settingController     *SettingController
-	xraySettingController *XraySettingController
+	settingController        *SettingController
+	xraySettingController    *XraySettingController
+	extraProtocolsController *ExtraProtocolsController
 }
 
 // NewXUIController creates a new XUIController and initializes its routes.
@@ -51,6 +52,7 @@ func (a *XUIController) initRouter(g *gin.RouterGroup) {
 
 	a.settingController = NewSettingController(g)
 	a.xraySettingController = NewXraySettingController(g)
+	a.extraProtocolsController = NewExtraProtocolsController(g.Group("/extra"))
 }
 
 // panelSPA serves the React SPA shell. Every GET under /panel/ that isn't an

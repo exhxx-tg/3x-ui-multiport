@@ -12,10 +12,10 @@ import {
   Table,
   Tabs,
   message,
-  type InputRef,
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined, ReloadOutlined } from '@ant-design/icons';
 import { HttpUtil } from '@/utils';
+import axios from 'axios';
 
 interface ExtraUser {
   id: number;
@@ -46,10 +46,10 @@ export default function ExtraProtocolsPage() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const usersMsg = await HttpUtil.get('/panel/api/extra/users');
-      const settingsMsg = await HttpUtil.get('/panel/api/extra/settings');
-      if (usersMsg?.success) setUsers(usersMsg.obj);
-      if (settingsMsg?.success) setSettings(settingsMsg.obj);
+      const usersMsg = await HttpUtil.get<ExtraUser[]>('/panel/api/extra/users');
+      const settingsMsg = await HttpUtil.get<ExtraSetting[]>('/panel/api/extra/settings');
+      if (usersMsg?.success) setUsers(Array.isArray(usersMsg.obj) ? usersMsg.obj : []);
+      if (settingsMsg?.success) setSettings(Array.isArray(settingsMsg.obj) ? settingsMsg.obj : []);
     } catch (err) {
       message.error(t('somethingWentWrong'));
     } finally {
@@ -64,7 +64,7 @@ export default function ExtraProtocolsPage() {
   const handleAddUser = async () => {
     try {
       const values = await form.validateFields();
-      const msg = await HttpUtil.post('/panel/api/extra/users', values);
+      const msg = await HttpUtil.post('/panel/api/extra/users', JSON.stringify(values));
       if (msg?.success) {
         message.success(t('success'));
         setModalVisible(false);
@@ -82,7 +82,8 @@ export default function ExtraProtocolsPage() {
     try {
       const values = await form.validateFields();
       if (!editingUser) return;
-      const msg = await HttpUtil.put(`/panel/api/extra/users/${editingUser.id}`, values);
+      const response = await axios.put(`/panel/api/extra/users/${editingUser.id}`, values);
+      const msg = response.data;
       if (msg?.success) {
         message.success(t('success'));
         setModalVisible(false);
@@ -99,7 +100,8 @@ export default function ExtraProtocolsPage() {
 
   const handleDeleteUser = async (id: number) => {
     try {
-      const msg = await HttpUtil.delete(`/panel/api/extra/users/${id}`);
+      const response = await axios.delete(`/panel/api/extra/users/${id}`);
+      const msg = response.data;
       if (msg?.success) {
         message.success(t('success'));
         fetchAll();
@@ -113,7 +115,8 @@ export default function ExtraProtocolsPage() {
 
   const handleUpdateSetting = async (protocolName: string, port: number, enabled: boolean, bannerText?: string) => {
     try {
-      const msg = await HttpUtil.put('/panel/api/extra/settings', { protocolName, listeningPort: port, isEnabled: enabled, bannerText });
+      const response = await axios.put('/panel/api/extra/settings', { protocolName, listeningPort: port, isEnabled: enabled, bannerText });
+      const msg = response.data;
       if (msg?.success) {
         message.success(t('success'));
         fetchAll();
@@ -176,39 +179,40 @@ export default function ExtraProtocolsPage() {
         <Tabs.TabPane tab="Port Settings" key="settings">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {settings.map(s => (
+              {settings.map((s: ExtraSetting) => (
                 <Card key={s.protocolName} size="small" title={s.protocolName}>
                   <Space align="baseline">
                     <span style={{ width: 100 }}>Port:</span>
-                    <Input 
-                      type="number" 
-                      value={s.listeningPort} 
+                    <Input
+                      type="number"
+                      defaultValue={s.listeningPort}
                       style={{ width: 120 }}
-                      onPressEnter={(e) => {
+                      onPressEnter={(e: any) => {
                         const val = parseInt((e.target as HTMLInputElement).value);
                         handleUpdateSetting(s.protocolName, val, s.isEnabled);
                       }}
                     />
-                    <Switch 
-                      checked={s.isEnabled} 
-                      onChange={(checked) => handleUpdateSetting(s.protocolName, s.listeningPort, checked)} 
+                    <Switch
+                      checked={s.isEnabled}
+                      onChange={(checked: boolean) => handleUpdateSetting(s.protocolName, s.listeningPort, checked)}
                     />
                   </Space>
                 </Card>
               ))}
             </div>
-            
+
             <Card title="Server Customization" size="small">
               <Space direction="vertical" style={{ width: '100%' }}>
                 <span style={{ fontWeight: 'bold' }}>Connection Banner (SSH/Dropbear)</span>
-                <Input.TextArea 
-                  rows={6} 
+                <Input.TextArea
+                  rows={6}
                   placeholder="Enter ASCII art or welcome message here..."
-                  value={settings.find(s => s.protocolName === 'SSH')?.bannerText || ''}
-                  onChange={(e) => {
+                  value={settings.find((s: ExtraSetting) => s.protocolName === 'SSH')?.bannerText || ''}
+                  onChange={(e: any) => {
                     const text = e.target.value;
                     // We update the banner under the 'SSH' setting for convenience
-                    handleUpdateSetting('SSH', 2222, true, text);
+                    const sshSetting = settings.find((s: ExtraSetting) => s.protocolName === 'SSH');
+                    handleUpdateSetting('SSH', sshSetting?.listeningPort || 22, sshSetting?.isEnabled || false, text);
                   }}
                 />
                 <p style={{ fontSize: '12px', color: 'gray' }}>

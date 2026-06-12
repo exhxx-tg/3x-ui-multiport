@@ -64,6 +64,10 @@
       "description": "Operations that interact with the configured Telegram bot."
     },
     {
+      "name": "Extra Protocols",
+      "description": "Manage additional protocol users and listener settings. All endpoints live under /panel/api/extra and require a logged-in session or Bearer token."
+    },
+    {
       "name": "Settings",
       "description": "Panel configuration and user credentials. All endpoints live under /panel/setting and require a logged-in session or Bearer token."
     },
@@ -4681,6 +4685,277 @@
         ],
         "summary": "Send a fresh DB backup to every Telegram chat configured as an admin recipient. No body, no params.",
         "operationId": "post_panel_api_backuptotgbot",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/extra/users": {
+      "get": {
+        "tags": [
+          "Extra Protocols"
+        ],
+        "summary": "List users configured for the extra protocol services such as SSH, Dropbear, OpenVPN, Squid, OHP, Psiphon, SLOW-DNS, SSWS, SSL/Stunnel, and UDP Custom.",
+        "operationId": "get_panel_api_extra_users",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "id": 1,
+                      "username": "alice",
+                      "password": "secret",
+                      "protocolType": "SSH",
+                      "expiryDate": 0,
+                      "status": "active",
+                      "configPayload": ""
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Extra Protocols"
+        ],
+        "summary": "Create a user for one of the extra protocol services.",
+        "operationId": "post_panel_api_extra_users",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "username": "alice",
+                "password": "secret",
+                "protocolType": "SSH",
+                "expiryDate": 0,
+                "status": "active"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/extra/users/{id}": {
+      "put": {
+        "tags": [
+          "Extra Protocols"
+        ],
+        "summary": "Patch an existing extra protocol user by numeric ID.",
+        "operationId": "put_panel_api_extra_users_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Extra protocol user ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "username": "alice",
+                "password": "new-secret",
+                "protocolType": "Dropbear",
+                "expiryDate": 0,
+                "status": "active"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Extra Protocols"
+        ],
+        "summary": "Delete an extra protocol user by numeric ID.",
+        "operationId": "delete_panel_api_extra_users_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Extra protocol user ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/extra/settings": {
+      "get": {
+        "tags": [
+          "Extra Protocols"
+        ],
+        "summary": "List extra protocol listener settings, including port, enabled state, and optional SSH/Dropbear banner text.",
+        "operationId": "get_panel_api_extra_settings",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "protocolName": "SSH",
+                      "listeningPort": 22,
+                      "isEnabled": true,
+                      "bannerText": "Welcome"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Extra Protocols"
+        ],
+        "summary": "Update a single extra protocol listener setting by protocol name.",
+        "operationId": "put_panel_api_extra_settings",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "protocolName": "SSH",
+                "listeningPort": 22,
+                "isEnabled": true,
+                "bannerText": "Welcome"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful response",

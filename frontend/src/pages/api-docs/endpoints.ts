@@ -873,6 +873,61 @@ export const sections: readonly Section[] = [
   },
 
   {
+    id: 'extra-protocols',
+    title: 'Extra Protocols',
+    description:
+      'Manage additional protocol users and listener settings. All endpoints live under /panel/api/extra and require a logged-in session or Bearer token.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/extra/users',
+        summary: 'List users configured for the extra protocol services such as SSH, Dropbear, OpenVPN, Squid, OHP, Psiphon, SLOW-DNS, SSWS, SSL/Stunnel, and UDP Custom.',
+        response:
+          '{\n  "success": true,\n  "obj": [\n    {\n      "id": 1,\n      "username": "alice",\n      "password": "secret",\n      "protocolType": "SSH",\n      "expiryDate": 0,\n      "status": "active",\n      "configPayload": ""\n    }\n  ]\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/extra/users',
+        summary: 'Create a user for one of the extra protocol services.',
+        body:
+          '{\n  "username": "alice",\n  "password": "secret",\n  "protocolType": "SSH",\n  "expiryDate": 0,\n  "status": "active"\n}',
+      },
+      {
+        method: 'PUT',
+        path: '/panel/api/extra/users/:id',
+        summary: 'Patch an existing extra protocol user by numeric ID.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Extra protocol user ID.' },
+        ],
+        body:
+          '{\n  "username": "alice",\n  "password": "new-secret",\n  "protocolType": "Dropbear",\n  "expiryDate": 0,\n  "status": "active"\n}',
+      },
+      {
+        method: 'DELETE',
+        path: '/panel/api/extra/users/:id',
+        summary: 'Delete an extra protocol user by numeric ID.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Extra protocol user ID.' },
+        ],
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/extra/settings',
+        summary: 'List extra protocol listener settings, including port, enabled state, and optional SSH/Dropbear banner text.',
+        response:
+          '{\n  "success": true,\n  "obj": [\n    {\n      "protocolName": "SSH",\n      "listeningPort": 22,\n      "isEnabled": true,\n      "bannerText": "Welcome"\n    }\n  ]\n}',
+      },
+      {
+        method: 'PUT',
+        path: '/panel/api/extra/settings',
+        summary: 'Update a single extra protocol listener setting by protocol name.',
+        body:
+          '{\n  "protocolName": "SSH",\n  "listeningPort": 22,\n  "isEnabled": true,\n  "bannerText": "Welcome"\n}',
+      },
+    ],
+  },
+
+  {
     id: 'settings',
     title: 'Settings',
     description:
