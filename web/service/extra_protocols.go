@@ -31,7 +31,7 @@ func (s *ExtraProtocolsService) MigrateDB() error {
 	defaults := []entity.ExtraSetting{
 		{ProtocolName: "SSH", ListeningPort: 22, IsEnabled: false},
 		{ProtocolName: "SSWS", ListeningPort: 80, IsEnabled: false},
-		{ProtocolName: "SLOW-DNS", ListeningPort: 5353, IsEnabled: false},
+		{ProtocolName: "SLOW-DNS", ListeningPort: 53, IsEnabled: false},
 		{ProtocolName: "Psiphon", ListeningPort: 3001, IsEnabled: false},
 		{ProtocolName: "UDP Custom (BadVPN)", ListeningPort: 7300, IsEnabled: false},
 		{ProtocolName: "Dropbear", ListeningPort: 143, IsEnabled: false},
@@ -166,7 +166,7 @@ func (s *ExtraProtocolsService) BuildConnectionDetails(user entity.ExtraUser, se
 			serverEntry = readFirstExistingFile("/etc/psiphon/server-entry.dat", "/etc/psiphon/server-entry.json", "/etc/3x-ui/extra/psiphon-server-entry.dat")
 		}
 		if serverEntry == "" {
-			serverEntry = "PSIPHON_SERVER_ENTRY_NOT_GENERATED_RUN_setup_extra_protocols.sh"
+			serverEntry = "PSIPHON_SERVER_ENTRY_NOT_GENERATED_RUN_install_master_vpn.sh"
 		}
 		config = joinConfigLines(
 			"HTTP Custom - Psiphon",
@@ -356,7 +356,7 @@ func defaultExtraProtocolPort(protocol string) int {
 	case "SSWS", "SSH-WS":
 		return 80
 	case "SLOW-DNS":
-		return 5353
+		return 53
 	case "PSIPHON":
 		return 3001
 	case "UDP CUSTOM (BADVPN)", "UDP CUSTOM":
@@ -401,6 +401,7 @@ func orderedDetails(details map[string]string) map[string]string {
 }
 
 func (s *ExtraProtocolsService) AddUser(user *entity.ExtraUser) error {
+	user.Username = SanitizeLinuxUsername(user.Username)
 	if user.Username == "" || user.Password == "" || user.ProtocolType == "" {
 		return common.NewError("username, password and protocol type are required")
 	}
@@ -432,7 +433,8 @@ func (s *ExtraProtocolsService) UpdateUser(id int64, updates map[string]any) err
 
 	newUsername := user.Username
 	if uname, ok := updates["username"].(string); ok && strings.TrimSpace(uname) != "" {
-		newUsername = strings.TrimSpace(uname)
+		newUsername = SanitizeLinuxUsername(uname)
+		updates["username"] = newUsername
 	}
 	newPassword := user.Password
 	if pass, ok := updates["password"].(string); ok && pass != "" {
@@ -498,6 +500,7 @@ func (s *ExtraProtocolsService) DeleteUser(id int64) error {
 }
 
 func (s *ExtraProtocolsService) ensureLinuxAccount(username, password string, expiry int64) error {
+	username = SanitizeLinuxUsername(username)
 	if err := s.sysManager.CreateOSUser(username, password); err != nil {
 		return err
 	}
@@ -505,6 +508,7 @@ func (s *ExtraProtocolsService) ensureLinuxAccount(username, password string, ex
 }
 
 func (s *ExtraProtocolsService) setLinuxAccountExpiry(username string, expiry int64) error {
+	username = SanitizeLinuxUsername(username)
 	if !usernameRegex.MatchString(username) {
 		return fmt.Errorf("invalid username")
 	}

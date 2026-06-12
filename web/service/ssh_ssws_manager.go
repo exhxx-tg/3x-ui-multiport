@@ -6,17 +6,57 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 // SshSswsManager handles the interaction with the host OS for managing SSH and SSWS users/configs.
 type SshSswsManager struct{}
 
-var usernameRegex = regexp.MustCompile(`^[a-z_][a-z0-9_-]*$`)
+var usernameRegex = regexp.MustCompile(`^[a-z_][a-z0-9_]*$`)
+
+// SanitizeLinuxUsername normalizes user-provided account names before any
+// useradd/usermod/userdel call. Linux useradd rejects spaces, uppercase
+// letters, and many punctuation characters, so we convert to a conservative
+// lowercase POSIX-safe form used consistently by the DB, payloads, and OS.
+func SanitizeLinuxUsername(username string) string {
+	username = strings.TrimSpace(strings.ToLower(username))
+	if username == "" {
+		return ""
+	}
+
+	var b strings.Builder
+	lastUnderscore := false
+	for _, r := range username {
+		valid := (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_'
+		if valid {
+			b.WriteRune(r)
+			lastUnderscore = r == '_'
+			continue
+		}
+
+		// Treat any space/separator/punctuation/non-ASCII/invalid character as a
+		// single underscore so names like "Ali VPN 1" become "ali_vpn_1".
+		if !lastUnderscore || unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteByte('_')
+			lastUnderscore = true
+		}
+	}
+
+	sanitized := strings.Trim(b.String(), "_")
+	if sanitized == "" {
+		return "u"
+	}
+	if sanitized[0] >= '0' && sanitized[0] <= '9' {
+		sanitized = "u_" + sanitized
+	}
+	return sanitized
+}
 
 // CreateOSUser creates a restricted Linux user for SSH.
 func (m *SshSswsManager) CreateOSUser(username, password string) error {
+	username = SanitizeLinuxUsername(username)
 	if !usernameRegex.MatchString(username) {
-		return fmt.Errorf("invalid username: must start with a letter/underscore and contain only lowercase, numbers, underscores, or hyphens")
+		return fmt.Errorf("invalid username after sanitization")
 	}
 
 	if _, err := exec.Command("getent", "passwd", username).Output(); err != nil {
@@ -39,6 +79,7 @@ func (m *SshSswsManager) CreateOSUser(username, password string) error {
 
 // DeleteOSUser removes the Linux user.
 func (m *SshSswsManager) DeleteOSUser(username string) error {
+	username = SanitizeLinuxUsername(username)
 	if !usernameRegex.MatchString(username) {
 		return fmt.Errorf("invalid username")
 	}
@@ -51,6 +92,7 @@ func (m *SshSswsManager) DeleteOSUser(username string) error {
 
 // UpdateOSUserPassword updates the password for an existing user.
 func (m *SshSswsManager) UpdateOSUserPassword(username, password string) error {
+	username = SanitizeLinuxUsername(username)
 	if !usernameRegex.MatchString(username) {
 		return fmt.Errorf("invalid username")
 	}
@@ -65,6 +107,10 @@ func (m *SshSswsManager) UpdateOSUserPassword(username, password string) error {
 // ManageSSWSConfig handles the credential files for SSWS.
 // Implementation depends on the specific SSWS daemon used.
 func (m *SshSswsManager) ManageSSWSConfig(username, password string, action string) error {
+	username = SanitizeLinuxUsername(username)
+	if !usernameRegex.MatchString(username) {
+		return fmt.Errorf("invalid username")
+	}
 	configPath := "/etc/ssws/users.conf"
 	if err := os.MkdirAll("/etc/ssws", 0755); err != nil {
 		return err
