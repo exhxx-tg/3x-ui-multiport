@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  x-ui-pro:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "2053:2053"    # Web UI
+      - "8080:8080"    # API
+      - "10085:10085"  # Xray API
+    volumes:
+      - x-ui-data:/etc/x-ui
+      - ./logs:/var/log/x-ui
+    environment:
+      - TZ=UTC
+      - LOG_LEVEL=info
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/inbounds"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  x-ui-data:
+    driver: local
