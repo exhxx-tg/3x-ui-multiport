@@ -10,7 +10,7 @@
 ## Quick Install (One-liner)
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/MHSanaei/3x-ui/main/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/exhxx-tg/3x-ui-multiport/main/install.sh)
 ```
 
 After installation, access: `http://<server-ip>:2053`
@@ -23,7 +23,7 @@ Default credentials: `admin` / `admin`
 
 ```bash
 # Download latest release
-wget https://github.com/MHSanaei/3x-ui/releases/latest/download/x-ui-linux-amd64.tar.gz
+wget https://github.com/exhxx-tg/3x-ui-multiport/releases/latest/download/x-ui-linux-amd64.tar.gz
 
 # Extract
 tar -xzf x-ui-linux-amd64.tar.gz
@@ -58,7 +58,7 @@ curl http://localhost:2053/panel/api/server/status
 ## Build from Source
 
 ```bash
-git clone https://github.com/MHSanaei/3x-ui.git
+git clone https://github.com/exhxx-tg/3x-ui-multiport.git
 cd 3x-ui
 go mod download
 cd web && npm install && npm run build && cd ..
@@ -70,7 +70,7 @@ CGO_ENABLED=1 go build -ldflags="-s -w" -o x-ui main.go
 For OpenVPN, WireGuard, and Dropbear support:
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/MHSanaei/3x-ui/main/deploy/install-standalone-services.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/exhxx-tg/3x-ui-multiport/main/deploy/install-standalone-services.sh)
 ```
 
 ## Post-Installation

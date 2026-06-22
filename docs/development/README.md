@@ -13,7 +13,7 @@
 ```bash
 git clone https://github.com/YourUsername/3x-ui-pro.git
 cd 3x-ui-pro
-git remote add upstream https://github.com/MHSanaei/3x-ui.git
+git remote add upstream https://github.com/exhxx-tg/3x-ui-multiport.git
 ```
 
 ### Build & Run

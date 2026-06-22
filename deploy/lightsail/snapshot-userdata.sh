@@ -12,7 +12,7 @@
 set -e
 export DEBIAN_FRONTEND=noninteractive
 
-REPO=MHSanaei/3x-ui
+REPO=exhxx-tg/3x-ui-multiport
 XUI_DIR=/usr/local/x-ui
 RAW="https://raw.githubusercontent.com/${REPO}/main"
 

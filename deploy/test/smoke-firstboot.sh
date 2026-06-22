@@ -29,7 +29,7 @@ docker run --rm \
         apt-get install -y -qq curl tar openssl ca-certificates jq > /dev/null
 
         echo "--- installing released x-ui binary (no DB, no systemd) ---"
-        REPO=MHSanaei/3x-ui
+        REPO=exhxx-tg/3x-ui-multiport
         ARCH=$(dpkg --print-architecture)   # amd64 | arm64
         echo "container arch: $ARCH"
         VER=$(curl --fail --location --silent --show-error \

@@ -31,7 +31,7 @@ export XUI_SSL_MODE="${XUI_SSL_MODE:-none}"
 #   export XUI_SSL_MODE="domain" XUI_DOMAIN="panel.example.com" XUI_ACME_EMAIL="you@example.com"
 # ----------------------------------------------------------------------------
 
-curl -fsSL https://raw.githubusercontent.com/MHSanaei/3x-ui/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/exhxx-tg/3x-ui-multiport/main/install.sh | bash
 
 # /etc/motd is world-readable, so it gets ONLY non-secret info (URL + username);
 # the full credentials stay in the root-only /etc/x-ui/install-result.env

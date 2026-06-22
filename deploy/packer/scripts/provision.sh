@@ -16,7 +16,7 @@ set -euo pipefail
 XUI_VERSION="${XUI_VERSION:-latest}"
 XUI_ARCH="${XUI_ARCH:-amd64}"
 XUI_DIR="/usr/local/x-ui"
-REPO="MHSanaei/3x-ui"
+REPO="exhxx-tg/3x-ui-multiport"
 export DEBIAN_FRONTEND=noninteractive
 
 echo "[provision] installing base packages..."

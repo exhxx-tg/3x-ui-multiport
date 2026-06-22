@@ -142,7 +142,7 @@ fi
 
 log "stripping instance state (shared cleanup.sh)..."
 ssh "${SSH_OPTS[@]}" -i "$KEY_FILE" "ubuntu@${IP}" \
-    'curl -fsSL https://raw.githubusercontent.com/MHSanaei/3x-ui/main/deploy/packer/scripts/cleanup.sh | sudo bash'
+    'curl -fsSL https://raw.githubusercontent.com/exhxx-tg/3x-ui-multiport/main/deploy/packer/scripts/cleanup.sh | sudo bash'
 
 log "stopping instance..."
 aws lightsail stop-instance --instance-name "$INSTANCE_NAME" --region "$REGION" > /dev/null

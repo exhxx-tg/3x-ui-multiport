@@ -1,6 +1,6 @@
 [Unit]
 Description=3x-ui first-boot per-instance credential generation
-Documentation=https://github.com/MHSanaei/3x-ui
+Documentation=https://github.com/exhxx-tg/3x-ui-multiport
 # Run after the network and cloud-init are up, but BEFORE the panel starts, so
 # the panel never serves the default admin/admin account.
 After=network-online.target cloud-init.service
