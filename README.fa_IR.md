@@ -61,37 +61,31 @@ X-UI PRO به‌عنوان نسخه‌ای توسعه‌یافته از 3X-UI س
 - **پشتیبانی Kubernetes** — مانیفست‌های کامل K8s
 - **۱۳ زبان رابط کاربری** با تم تیره و روشن
 
-## شروع سریع
+## شروع سریع — یک کد نصب، همه چیز آماده
 
-### نصب یک خطی (Bare Metal)
+### 🐧 سرور معمولی (Bare Metal)
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/exhxx-tg/3x-ui-multiport/main/install.sh)
 ```
+> بعد نصب: `http://your-server-ip:2053` یا دستور `x-ui` در ترمینال.
 
-### Docker (توصیه شده)
+### 🐳 Docker (پیشنهادی)
 ```bash
-docker run -d \
-  --name x-ui \
-  --cap-add=NET_ADMIN \
-  --cap-add=NET_RAW \
-  -p 2053:2053 \
-  -v x-ui-db:/etc/x-ui \
-  ghcr.io/exhxx-tg/3x-ui-multiport:latest
+docker run -d --name x-ui --restart unless-stopped --cap-add=NET_ADMIN --cap-add=NET_RAW -p 2053:2053 -v x-ui-db:/etc/x-ui ghcr.io/exhxx-tg/3x-ui-multiport:latest
+```
+> باز کنید: `http://your-server-ip:2053`
+
+### ☸️ Kubernetes
+```bash
+kubectl apply -k https://github.com/exhxx-tg/3x-ui-multiport/deploy/k8s
 ```
 
-### Docker Compose
+### ⚡ نصب بدون دخالت
 ```bash
-git clone https://github.com/exhxx-tg/3x-ui-multiport.git
-cd 3x-ui-multiport
-docker compose up -d
+XUI_NONINTERACTIVE=1 bash <(curl -Ls https://raw.githubusercontent.com/exhxx-tg/3x-ui-multiport/main/install.sh)
 ```
 
-### Kubernetes
-```bash
-kubectl apply -k deploy/k8s/
-```
-
-برای مستندات کامل به [docs/](docs/) مراجعه کنید.
+مستندات کامل: [docs/](docs/)
 
 ## پلتفرم‌های پشتیبانی‌شده
 

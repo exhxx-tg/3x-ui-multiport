@@ -72,41 +72,31 @@ Built as a superset of the 3X-UI project, X-UI PRO adds 8 additional protocols, 
 - **13 UI languages** with dark and light themes.
 - **Fail2ban integration** for enforcing per-client IP limits.
 
-## Quick Start
+## Quick Start — كود تثبيت واحد يجهز كل شي
 
-### One-line Install (Bare Metal)
+### 🐧 Linux (Bare Metal) — كلاسيكي
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/exhxx-tg/3x-ui-multiport/main/install.sh)
 ```
+> بعد التثبيت: افتح `http://your-server-ip:2053`، أو شغّل `x-ui` للإدارة.
 
-During installation a random username, password, and access path are generated. After installation, run `x-ui` to open the management menu, where you can start/stop the service, view or reset your login credentials, manage SSL certificates, and more.
-
-### Docker (Recommended)
+### 🐳 Docker — كود واحد يشتغل في أي مكان
 ```bash
-docker run -d \
-  --name x-ui \
-  --cap-add=NET_ADMIN \
-  --cap-add=NET_RAW \
-  -p 2053:2053 \
-  -v x-ui-db:/etc/x-ui \
-  ghcr.io/exhxx-tg/3x-ui-multiport:latest
+docker run -d --name x-ui --restart unless-stopped --cap-add=NET_ADMIN --cap-add=NET_RAW -p 2053:2053 -v x-ui-db:/etc/x-ui ghcr.io/exhxx-tg/3x-ui-multiport:latest
+```
+> افتح المتصفح على `http://your-server-ip:2053`
+
+### ☸️ Kubernetes
+```bash
+kubectl apply -k https://github.com/exhxx-tg/3x-ui-multiport/deploy/k8s
 ```
 
-Then open: `http://your-server-ip:2053`
-
-### Docker Compose
+### ⚡ تثبيت بدون تدخل (للسحابات)
 ```bash
-git clone https://github.com/exhxx-tg/3x-ui-multiport.git
-cd 3x-ui-multiport
-docker compose up -d
+XUI_NONINTERACTIVE=1 bash <(curl -Ls https://raw.githubusercontent.com/exhxx-tg/3x-ui-multiport/main/install.sh)
 ```
 
-### Kubernetes
-```bash
-kubectl apply -k deploy/k8s/
-```
-
-For full documentation, please visit the [docs/](docs/) directory.
+لمزيد من التفاصيل: [docs/](docs/)
 
 ### Unattended install & cloud images
 

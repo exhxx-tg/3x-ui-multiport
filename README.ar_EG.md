@@ -66,37 +66,31 @@
 - **Kubernetes** — ملفات K8s كاملة
 - **13 لغة واجهة** مع سمات داكنة وفاتحة
 
-## البدء السريع
+## البدء السريع — كود تثبيت واحد يجهز كل شي
 
-### تثبيت سطر واحد (Bare Metal)
+### 🐧 خادم عادي (Bare Metal)
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/exhxx-tg/3x-ui-multiport/main/install.sh)
 ```
+> بعد التثبيت: `http://your-server-ip:2053` أو شغّل `x-ui` من الطرفية.
 
-### Docker (موصى به)
+### 🐳 Docker (أسهل وأسرع)
 ```bash
-docker run -d \
-  --name x-ui \
-  --cap-add=NET_ADMIN \
-  --cap-add=NET_RAW \
-  -p 2053:2053 \
-  -v x-ui-db:/etc/x-ui \
-  ghcr.io/exhxx-tg/3x-ui-multiport:latest
+docker run -d --name x-ui --restart unless-stopped --cap-add=NET_ADMIN --cap-add=NET_RAW -p 2053:2053 -v x-ui-db:/etc/x-ui ghcr.io/exhxx-tg/3x-ui-multiport:latest
+```
+> افتح `http://your-server-ip:2053`
+
+### ☸️ Kubernetes
+```bash
+kubectl apply -k https://github.com/exhxx-tg/3x-ui-multiport/deploy/k8s
 ```
 
-### Docker Compose
+### ⚡ تثبيت بدون تدخل
 ```bash
-git clone https://github.com/exhxx-tg/3x-ui-multiport.git
-cd 3x-ui-multiport
-docker compose up -d
+XUI_NONINTERACTIVE=1 bash <(curl -Ls https://raw.githubusercontent.com/exhxx-tg/3x-ui-multiport/main/install.sh)
 ```
 
-### Kubernetes
-```bash
-kubectl apply -k deploy/k8s/
-```
-
-للحصول على الوثائق الكاملة، يرجى زيارة [docs/](docs/).
+لمزيد من التفاصيل: [docs/](docs/)
 
 ## المنصات المدعومة
 
