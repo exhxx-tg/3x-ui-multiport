@@ -1393,4 +1393,253 @@ export const sections: readonly Section[] = [
       },
     ],
   },
+  {
+    id: 'protocols',
+    title: 'Protocol Ecosystem',
+    description:
+      '<p>Unified management for all 13 protocols in the X-UI PRO ecosystem. Endpoints under <code>/panel/api/protocols</code> provide a read-only unified view on top of the existing Xray inbound system, plus lifecycle control for standalone services and transport wrappers.</p>',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/protocols',
+        summary: 'List every registered protocol with its category, current status, health, and port.',
+        response: '{\n  "success": true,\n  "obj": [\n    { "id": "vmess", "name": "VMess", "category": "base", "status": "running", "healthy": true, "port": 443 },\n    { "id": "openvpn", "name": "OpenVPN", "category": "standalone", "status": "stopped", "healthy": false, "port": 1194 }\n  ]\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/protocols/detailed',
+        summary: 'Detailed view — includes description, source URL, Xray-native flag, and supported wrappers for each protocol.',
+        response: '{\n  "success": true,\n  "obj": [\n    {\n      "id": "vmess",\n      "name": "VMess",\n      "category": "base",\n      "status": "running",\n      "healthy": true,\n      "port": 443,\n      "description": "Socks5-like proxy with encryption",\n      "source": "https://github.com/v2fly/v2ray-core",\n      "xrayNative": true,\n      "wrappers": ["websocket", "tls", "http2", "grpc", "naive"]\n    }\n  ]\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/protocols/:id',
+        summary: 'Get information about a single protocol by its ID.',
+        params: [
+          { name: 'id', in: 'path', type: 'string', desc: 'Protocol ID (vmess, vless, trojan, shadowsocks, hysteria, openvpn, wireguard, dropbear, websocket, tls, http2, grpc, naive).' },
+        ],
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/protocols/:id/status',
+        summary: 'Current status of one protocol: running, stopped, or error.',
+        params: [
+          { name: 'id', in: 'path', type: 'string', desc: 'Protocol ID.' },
+        ],
+        response: '{\n  "success": true,\n  "obj": {\n    "id": "vmess",\n    "status": "running",\n    "healthy": true,\n    "port": 443\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/protocols/:id/start',
+        summary: 'Start a protocol. For base Xray protocols this enables the matching inbound type; for standalone services it starts the systemd unit; for wrappers it starts the wrapper process.',
+        params: [
+          { name: 'id', in: 'path', type: 'string', desc: 'Protocol ID.' },
+        ],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/protocols/:id/stop',
+        summary: 'Stop a running protocol.',
+        params: [
+          { name: 'id', in: 'path', type: 'string', desc: 'Protocol ID.' },
+        ],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/protocols/:id/restart',
+        summary: 'Restart a protocol (stop then start).',
+        params: [
+          { name: 'id', in: 'path', type: 'string', desc: 'Protocol ID.' },
+        ],
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/protocols/:id/health',
+        summary: 'Run a health check on a protocol. Returns healthy=true only if the protocol is running and responding.',
+        params: [
+          { name: 'id', in: 'path', type: 'string', desc: 'Protocol ID.' },
+        ],
+        response: '{\n  "success": true,\n  "obj": {\n    "id": "vmess",\n    "healthy": true\n  }\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/protocols/:id/wrappers',
+        summary: 'List transport wrappers compatible with a given base protocol.',
+        params: [
+          { name: 'id', in: 'path', type: 'string', desc: 'Base protocol ID.' },
+        ],
+        response: '{\n  "success": true,\n  "obj": ["websocket", "tls", "http2", "grpc", "naive"]\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/protocol-configs/:protocol',
+        summary: 'Read protocol-specific configuration (port, settings, enabled state).',
+        params: [
+          { name: 'protocol', in: 'path', type: 'string', desc: 'Protocol ID.' },
+        ],
+      },
+      {
+        method: 'PUT',
+        path: '/panel/api/protocol-configs/:protocol',
+        summary: 'Update protocol-specific configuration.',
+        params: [
+          { name: 'protocol', in: 'path', type: 'string', desc: 'Protocol ID.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'services',
+    title: 'Standalone Services',
+    description:
+      'CRUD for standalone service entries (OpenVPN, WireGuard, Dropbear). Each service runs as its own systemd unit, independent of Xray. Endpoints under <code>/panel/api/services</code>.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/services',
+        summary: 'List all standalone services with their current status and config.',
+        response: '{\n  "success": true,\n  "obj": [\n    { "id": "openvpn", "name": "OpenVPN", "enabled": true, "port": 1194, "status": "running" }\n  ]\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/services/:id',
+        summary: 'Get a single standalone service by its protocol ID.',
+        params: [
+          { name: 'id', in: 'path', type: 'string', desc: 'Service protocol ID (openvpn, wireguard, dropbear).' },
+        ],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/services',
+        summary: 'Register a new standalone service entry.',
+        body: '{\n  "id": "openvpn",\n  "port": 1194,\n  "enabled": true\n}',
+      },
+      {
+        method: 'PUT',
+        path: '/panel/api/services/:id',
+        summary: 'Update a standalone service configuration.',
+        params: [
+          { name: 'id', in: 'path', type: 'string', desc: 'Service protocol ID.' },
+        ],
+      },
+      {
+        method: 'DELETE',
+        path: '/panel/api/services/:id',
+        summary: 'Delete a standalone service entry.',
+        params: [
+          { name: 'id', in: 'path', type: 'string', desc: 'Service protocol ID.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'wrappers',
+    title: 'Transport Wrappers',
+    description:
+      'CRUD for transport wrapper entries (WebSocket, TLS, HTTP/2, gRPC, Naive). Wrappers sit on top of base protocols to add obfuscation or transport layer. Endpoints under <code>/panel/api/wrappers</code>.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/wrappers',
+        summary: 'List all transport wrappers.',
+        response: '{\n  "success": true,\n  "obj": [\n    { "id": "websocket", "name": "WebSocket Wrapper", "port": 80, "enabled": true }\n  ]\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/wrappers',
+        summary: 'Create a new transport wrapper entry.',
+        body: '{\n  "id": "websocket",\n  "port": 80,\n  "enabled": true\n}',
+      },
+      {
+        method: 'PUT',
+        path: '/panel/api/wrappers/:id',
+        summary: 'Update a transport wrapper configuration.',
+        params: [
+          { name: 'id', in: 'path', type: 'string', desc: 'Wrapper protocol ID.' },
+        ],
+      },
+      {
+        method: 'DELETE',
+        path: '/panel/api/wrappers/:id',
+        summary: 'Delete a transport wrapper entry.',
+        params: [
+          { name: 'id', in: 'path', type: 'string', desc: 'Wrapper protocol ID.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'audit',
+    title: 'Audit Log',
+    description:
+      'Immutable audit trail of all state-changing operations. Logs are write-once and cannot be modified or deleted through normal API calls. Endpoints under <code>/panel/api/audit</code>.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/audit/logs',
+        summary: 'List audit log entries with pagination. Each entry records who did what, when, the result, and the client IP.',
+        response: '{\n  "success": true,\n  "obj": {\n    "items": [\n      {\n        "id": 1,\n        "userId": 1,\n        "username": "admin",\n        "action": "update",\n        "resource": "inbounds",\n        "resourceId": "5",\n        "detail": "Changed port from 443 to 8443",\n        "ip": "10.0.0.1",\n        "status": "success",\n        "createdAt": 1700000000000\n      }\n    ],\n    "total": 42\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/audit/logs/clear',
+        summary: 'Clear all audit log entries. Requires admin role. Use sparingly — audit logs are meant to be immutable.',
+      },
+    ],
+  },
+  {
+    id: 'rbac',
+    title: 'RBAC (Role-Based Access Control)',
+    description:
+      'Manage roles, permissions, and user-role assignments. Four built-in roles (admin, operator, viewer, service) with configurable permission sets. Endpoints under <code>/panel/api/rbac</code>.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/rbac/roles',
+        summary: 'List all roles with their metadata.',
+        response: '{\n  "success": true,\n  "obj": [\n    { "id": 1, "name": "admin", "description": "Full control" },\n    { "id": 2, "name": "operator", "description": "Protocol management + monitoring" },\n    { "id": 3, "name": "viewer", "description": "Read-only" },\n    { "id": 4, "name": "service", "description": "API-only" }\n  ]\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/rbac/roles/:id/permissions',
+        summary: 'Get the permission set for a single role.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Role ID.' },
+        ],
+        response: '{\n  "success": true,\n  "obj": {\n    "roleId": 1,\n    "permissions": {\n      "inbounds": ["read", "write", "delete"],\n      "protocols": ["read", "write", "control"]\n    }\n  }\n}',
+      },
+      {
+        method: 'PUT',
+        path: '/panel/api/rbac/roles/:id/permissions',
+        summary: 'Replace the entire permission set for a role.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Role ID.' },
+        ],
+        body: '{\n  "inbounds": ["read", "write"],\n  "protocols": ["read"],\n  "monitoring": ["read"]\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/rbac/permissions',
+        summary: 'List all available permission resources.',
+        response: '{\n  "success": true,\n  "obj": ["users", "inbounds", "protocols", "services", "wrappers", "monitoring", "settings", "backup", "audit", "roles", "certificates"]\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/rbac/users/:userId/role',
+        summary: 'Get the role assigned to a specific user.',
+        params: [
+          { name: 'userId', in: 'path', type: 'number', desc: 'User ID.' },
+        ],
+      },
+      {
+        method: 'PUT',
+        path: '/panel/api/rbac/users/:userId/role',
+        summary: 'Assign a role to a user.',
+        params: [
+          { name: 'userId', in: 'path', type: 'number', desc: 'User ID.' },
+        ],
+        body: '{\n  "roleId": 2\n}',
+      },
+    ],
+  },
 ];

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/util/common"
 )
 
 // Msg represents a standard API response message with success status, message text, and optional data object.

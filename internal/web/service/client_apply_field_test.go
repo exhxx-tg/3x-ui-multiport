@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/database"
-	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database/model"
 )
 
 // TestResetClientExpiryTimeByEmail_MultiInbound reproduces #5039: a client

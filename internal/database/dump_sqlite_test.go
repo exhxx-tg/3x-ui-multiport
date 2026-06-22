@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
-	"github.com/mhsanaei/3x-ui/v3/internal/xray"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database/model"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/xray"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"

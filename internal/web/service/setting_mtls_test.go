@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/database"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database"
 )
 
 func setupSettingMtlsDB(t *testing.T) *SettingService {

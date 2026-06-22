@@ -4,11 +4,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/web/middleware"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/service/panel"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/service/tgbot"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/session"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/middleware"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/service"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/service/panel"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/service/tgbot"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/session"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,6 +22,8 @@ type APIController struct {
 	hostController        *HostController
 	settingController     *SettingController
 	xraySettingController *XraySettingController
+	protocolController    *ProtocolController
+	rbacController        *RBACController
 	settingService        service.SettingService
 	userService           panel.UserService
 	apiTokenService       panel.ApiTokenService
@@ -79,6 +81,10 @@ func (a *APIController) initRouter(g *gin.RouterGroup) {
 	// advertise support, before CSRF/handlers read the body.
 	api.Use(middleware.ConfigEnvelopeMiddleware())
 	api.Use(middleware.CSRFMiddleware())
+	// Audit logging for all state-changing API calls
+	api.Use(middleware.AuditMiddleware())
+	// Auto RBAC — maps URL paths to resources and HTTP methods to actions
+	api.Use(middleware.RBACMiddleware())
 
 	// Inbounds API
 	inbounds := api.Group("/inbounds")
@@ -100,11 +106,32 @@ func (a *APIController) initRouter(g *gin.RouterGroup) {
 	hosts := api.Group("/hosts")
 	a.hostController = NewHostController(hosts)
 
-	// Settings + Xray config management live under the API surface too, so the
-	// same API token drives them. Paths are /panel/api/setting/* and
-	// /panel/api/xray/*.
+	// Protocol Ecosystem API — unified management of all 13 protocols, services, and wrappers
+	protocols := api.Group("/protocols")
+	a.protocolController = NewProtocolController(protocols)
+
+	// Monitoring & Alerting API (controller creates its own /monitor sub-group)
+	NewMonitorController(api)
+
+	// Audit Log API
+	NewAuditController(api)
+
+	// Settings + Xray config management
 	a.settingController = NewSettingController(api)
 	a.xraySettingController = NewXraySettingController(api)
+
+	// RBAC & Security
+	rbacGroup := api.Group("/rbac")
+	a.rbacController = NewRBACController(rbacGroup)
+
+	// Security Dashboard — IP access control, sessions, login attempts, 2FA
+	NewSecurityController(api)
+
+	// Backup & Restore
+	NewBackupController(api)
+
+	// Certificate Management
+	NewCertificateController(api)
 
 	// Extra routes
 	api.POST("/backuptotgbot", a.BackuptoTgbot)

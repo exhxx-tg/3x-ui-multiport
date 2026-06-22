@@ -3,8 +3,8 @@ package service
 import (
 	"testing"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/database"
-	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database/model"
 )
 
 func mkHost(t *testing.T, svc *HostService, inboundId int, remark string, order int) *model.Host {

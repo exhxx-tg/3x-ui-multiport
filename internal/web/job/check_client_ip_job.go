@@ -13,11 +13,11 @@ import (
 	"sort"
 	"time"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/database"
-	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
-	"github.com/mhsanaei/3x-ui/v3/internal/logger"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
-	"github.com/mhsanaei/3x-ui/v3/internal/xray"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database/model"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/logger"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/service"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/xray"
 
 	"gorm.io/gorm"
 )

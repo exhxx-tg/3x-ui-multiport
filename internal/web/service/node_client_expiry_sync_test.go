@@ -3,7 +3,7 @@ package service
 import (
 	"testing"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/xray"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/xray"
 )
 
 // TestMergeActivationExpiry covers the pure reconciliation rule in isolation.

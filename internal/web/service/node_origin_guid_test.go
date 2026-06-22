@@ -3,9 +3,9 @@ package service
 import (
 	"testing"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/database"
-	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/runtime"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database/model"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/runtime"
 )
 
 // #4983: a synced inbound's OriginNodeGuid must point at the panel that

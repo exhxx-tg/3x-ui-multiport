@@ -1,9 +1,9 @@
 package job
 
 import (
-	"github.com/mhsanaei/3x-ui/v3/internal/logger"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/websocket"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/logger"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/service"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/websocket"
 )
 
 // OutboundSubscriptionJob periodically re-fetches enabled outbound subscriptions,

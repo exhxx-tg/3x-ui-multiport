@@ -3,7 +3,7 @@ package sub
 import (
 	"strings"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database/model"
 )
 
 // ShareEndpoint is one render target for a subscription link: the address/port

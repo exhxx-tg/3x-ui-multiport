@@ -16,8 +16,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/config"
-	"github.com/mhsanaei/3x-ui/v3/internal/logger"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/config"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/logger"
 )
 
 // GetBinaryName returns the mtg binary filename for the current OS and arch,

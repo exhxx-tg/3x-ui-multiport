@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/config"
-	"github.com/mhsanaei/3x-ui/v3/internal/database"
-	xuilogger "github.com/mhsanaei/3x-ui/v3/internal/logger"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/config"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database"
+	xuilogger "github.com/exhxx-tg/3x-ui-multiport/internal/logger"
 
 	"github.com/op/go-logging"
 	"gorm.io/gorm"

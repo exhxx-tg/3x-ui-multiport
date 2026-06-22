@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database/model"
 )
 
 func TestSubscriptionExpiryFromClient(t *testing.T) {

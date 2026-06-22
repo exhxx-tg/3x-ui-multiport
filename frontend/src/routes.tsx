@@ -12,6 +12,9 @@ const HostsPage = lazy(() => import('@/pages/hosts/HostsPage'));
 const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'));
 const XrayPage = lazy(() => import('@/pages/xray/XrayPage'));
 const ApiDocsPage = lazy(() => import('@/pages/api-docs/ApiDocsPage'));
+const ProtocolsPage = lazy(() => import('@/pages/protocols/ProtocolsPage'));
+const MonitoringPage = lazy(() => import('@/pages/monitoring/MonitoringPage'));
+const SecurityPage = lazy(() => import('@/pages/security/SecurityPage'));
 
 function withSuspense(node: React.ReactNode) {
   return <Suspense fallback={null}>{node}</Suspense>;
@@ -30,6 +33,9 @@ const routes: RouteObject[] = [
       { path: 'hosts', element: withSuspense(<HostsPage />) },
       { path: 'settings', element: withSuspense(<SettingsPage />) },
       { path: 'xray', element: withSuspense(<XrayPage />) },
+      { path: 'protocols', element: withSuspense(<ProtocolsPage />) },
+      { path: 'monitoring', element: withSuspense(<MonitoringPage />) },
+      { path: 'security', element: withSuspense(<SecurityPage />) },
       { path: 'api-docs', element: withSuspense(<ApiDocsPage />) },
     ],
   },

@@ -17,11 +17,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/config"
-	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
-	"github.com/mhsanaei/3x-ui/v3/internal/util/crypto"
-	"github.com/mhsanaei/3x-ui/v3/internal/util/random"
-	"github.com/mhsanaei/3x-ui/v3/internal/xray"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/config"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database/model"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/util/crypto"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/util/random"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/xray"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
@@ -78,6 +78,23 @@ func initModels() error {
 		&model.NodeClientIp{},
 		&model.ClientGlobalTraffic{},
 		&model.OutboundSubscription{},
+		&model.Service{},
+		&model.TransportWrapper{},
+		&model.ProtocolConfig{},
+		&model.AlertRule{},
+		&model.AlertHistory{},
+		&model.ProtocolMetrics{},
+		&model.AuditLog{},
+		&model.Permission{},
+		&model.RolePermission{},
+		&model.UserRole{},
+		&model.Backup{},
+		&model.Certificate{},
+		&model.IPAccessRule{},
+		&model.LoginAttempt{},
+		&model.ActiveSession{},
+		&model.SecurityEvent{},
+		&model.BackupCode{},
 	}
 	for _, mdl := range models {
 		if err := db.AutoMigrate(mdl); err != nil {
@@ -947,6 +964,7 @@ func InitDB(dbPath string) error {
 	if err := initUser(); err != nil {
 		return err
 	}
+	seedRBAC(db)
 	return runSeeders(isUsersEmpty)
 }
 
@@ -975,6 +993,114 @@ func envInt(key string, def int) int {
 		return def
 	}
 	return n
+}
+
+func seedRBAC(db *gorm.DB) {
+	seedPermissions(db)
+	seedRolePermissions(db)
+}
+
+func seedPermissions(db *gorm.DB) {
+	type permDef struct{ Resource, Action string }
+	allPerms := []permDef{
+		{"users", "read"}, {"users", "write"}, {"users", "delete"},
+		{"inbounds", "read"}, {"inbounds", "write"}, {"inbounds", "delete"},
+		{"protocols", "read"}, {"protocols", "write"}, {"protocols", "control"},
+		{"services", "read"}, {"services", "write"}, {"services", "control"},
+		{"wrappers", "read"}, {"wrappers", "write"},
+		{"monitoring", "read"}, {"monitoring", "write"},
+		{"settings", "read"}, {"settings", "write"},
+		{"backup", "read"}, {"backup", "write"},
+		{"audit", "read"}, {"audit", "clear"},
+		{"roles", "read"}, {"roles", "write"},
+		{"nodes", "read"}, {"nodes", "write"},
+		{"clients", "read"}, {"clients", "write"},
+		{"certificates", "read"}, {"certificates", "write"},
+	}
+	for _, p := range allPerms {
+		var count int64
+		db.Model(&model.Permission{}).
+			Where("resource = ? AND action = ?", p.Resource, p.Action).
+			Count(&count)
+		if count == 0 {
+			db.Create(&model.Permission{Resource: p.Resource, Action: p.Action, CreatedAt: time.Now().UnixMilli()})
+		}
+	}
+}
+
+func seedRolePermissions(db *gorm.DB) {
+	type rolePerms struct {
+		roleID int
+		perms  []struct{ Resource, Action string }
+	}
+	roles := []rolePerms{
+		{1, []struct{ Resource, Action string }{
+			{"users", "read"}, {"users", "write"}, {"users", "delete"},
+			{"inbounds", "read"}, {"inbounds", "write"}, {"inbounds", "delete"},
+			{"protocols", "read"}, {"protocols", "write"}, {"protocols", "control"},
+			{"services", "read"}, {"services", "write"}, {"services", "control"},
+			{"wrappers", "read"}, {"wrappers", "write"},
+			{"monitoring", "read"}, {"monitoring", "write"},
+			{"settings", "read"}, {"settings", "write"},
+			{"backup", "read"}, {"backup", "write"},
+			{"audit", "read"}, {"audit", "clear"},
+			{"roles", "read"}, {"roles", "write"},
+			{"nodes", "read"}, {"nodes", "write"},
+			{"clients", "read"}, {"clients", "write"},
+			{"certificates", "read"}, {"certificates", "write"},
+		}},
+		{2, []struct{ Resource, Action string }{
+			{"inbounds", "read"}, {"inbounds", "write"}, {"inbounds", "delete"},
+			{"protocols", "read"}, {"protocols", "write"}, {"protocols", "control"},
+			{"services", "read"}, {"services", "write"}, {"services", "control"},
+			{"wrappers", "read"}, {"wrappers", "write"},
+			{"monitoring", "read"},
+			{"nodes", "read"}, {"nodes", "write"},
+			{"clients", "read"}, {"clients", "write"},
+		}},
+		{3, []struct{ Resource, Action string }{
+			{"inbounds", "read"},
+			{"protocols", "read"},
+			{"services", "read"},
+			{"wrappers", "read"},
+			{"monitoring", "read"},
+			{"nodes", "read"},
+			{"clients", "read"},
+			{"audit", "read"},
+			{"settings", "read"},
+		}},
+		{4, []struct{ Resource, Action string }{
+			{"protocols", "read"}, {"protocols", "control"},
+			{"services", "read"}, {"services", "control"},
+			{"monitoring", "read"},
+			{"inbounds", "read"},
+			{"nodes", "read"},
+		}},
+	}
+	for _, role := range roles {
+		db.Where("role_id = ?", role.roleID).Delete(&model.RolePermission{})
+		for _, rp := range role.perms {
+			var perm model.Permission
+			if err := db.Where("resource = ? AND action = ?", rp.Resource, rp.Action).First(&perm).Error; err != nil {
+				continue
+			}
+			var count int64
+			db.Model(&model.RolePermission{}).
+				Where("role_id = ? AND permission_id = ?", role.roleID, perm.Id).
+				Count(&count)
+			if count == 0 {
+				db.Create(&model.RolePermission{RoleId: role.roleID, PermissionId: perm.Id})
+			}
+		}
+	}
+
+	for _, u := range []int{1} {
+		var count int64
+		db.Model(&model.UserRole{}).Where("user_id = ?", u).Count(&count)
+		if count == 0 {
+			db.Create(&model.UserRole{UserId: u, RoleId: 1})
+		}
+	}
 }
 
 // CloseDB closes the database connection if it exists.

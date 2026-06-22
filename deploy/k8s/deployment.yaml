@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: x-ui-pro
+  namespace: x-ui-pro
+  labels:
+    app.kubernetes.io/name: x-ui-pro
+    app.kubernetes.io/part-of: x-ui-pro
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: x-ui-pro
+  template:
+    metadata:
+      labels:
+        app: x-ui-pro
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "2053"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: x-ui-pro
+          image: hsanaeii/3x-ui:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: webui
+              containerPort: 2053
+              protocol: TCP
+            - name: xray-api
+              containerPort: 10085
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: x-ui-pro-config
+            - secretRef:
+                name: x-ui-pro-secret
+          volumeMounts:
+            - name: data
+              mountPath: /etc/x-ui
+            - name: certs
+              mountPath: /etc/x-ui/certs
+              readOnly: false
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 2053
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 2053
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 3
+            successThreshold: 1
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            capabilities:
+              add: ["NET_ADMIN", "NET_RAW"]
+            allowPrivilegeEscalation: false
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: x-ui-pro-data
+        - name: certs
+          persistentVolumeClaim:
+            claimName: x-ui-pro-certs

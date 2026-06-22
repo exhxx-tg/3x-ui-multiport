@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/eventbus"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/eventbus"
 )
 
 var cachedHostname string

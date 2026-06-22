@@ -13,10 +13,10 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/database"
-	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
-	"github.com/mhsanaei/3x-ui/v3/internal/util/crypto"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/session"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database/model"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/util/crypto"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/session"
 )
 
 // newAPIAuthTestEngine builds a gin engine that mirrors the production auth

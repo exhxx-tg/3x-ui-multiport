@@ -3,8 +3,8 @@ package service
 import (
 	"crypto/x509"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
-	"github.com/mhsanaei/3x-ui/v3/internal/util/crypto"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/util/common"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/util/crypto"
 )
 
 const (

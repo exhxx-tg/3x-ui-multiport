@@ -7,9 +7,9 @@ import (
 	"maps"
 	"strings"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
-	"github.com/mhsanaei/3x-ui/v3/internal/util/json_util"
-	"github.com/mhsanaei/3x-ui/v3/internal/util/random"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database/model"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/util/json_util"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/util/random"
 )
 
 //go:embed default.json

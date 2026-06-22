@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/mhsanaei/3x-ui/v3/internal/database"
-	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/runtime"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database/model"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/runtime"
 )
 
 // fakeNodeRuntime is a runtime.Runtime stub that counts the per-client dispatch

@@ -16,23 +16,31 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/config"
-	"github.com/mhsanaei/3x-ui/v3/internal/eventbus"
-	"github.com/mhsanaei/3x-ui/v3/internal/logger"
-	"github.com/mhsanaei/3x-ui/v3/internal/mtproto"
-	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/controller"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/job"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/locale"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/middleware"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/network"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/runtime"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/service/email"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/service/panel"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/service/tgbot"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/websocket"
-	"github.com/mhsanaei/3x-ui/v3/internal/xray"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/config"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/eventbus"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/logger"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/monitor"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/performance"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/servicemanager"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/mtproto"
+	xuiProtocol "github.com/exhxx-tg/3x-ui-multiport/internal/protocol"
+	_ "github.com/exhxx-tg/3x-ui-multiport/internal/protocol/standalone"
+	_ "github.com/exhxx-tg/3x-ui-multiport/internal/protocol/wrapper"
+	_ "github.com/exhxx-tg/3x-ui-multiport/internal/protocol/xray"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/util/common"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/controller"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/job"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/locale"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/middleware"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/network"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/runtime"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/service"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/service/email"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/service/panel"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/service/tgbot"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/websocket"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/xray"
 
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-contrib/sessions"
@@ -164,6 +172,15 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 	sendHSTS := directHTTPS && !config.IsSkipHSTS()
 	engine.Use(middleware.SecurityHeadersMiddleware(sendHSTS))
 
+	// Rate limiting — global per-IP rate limiter for API protection
+	engine.Use(middleware.ConfigurableRateLimitMiddleware())
+
+	// IP Access Control — allow/block lists for admin panel access
+	engine.Use(middleware.IPAccessMiddleware())
+
+	// Performance monitoring middleware (request counting, latency tracking)
+	engine.Use(performance.GinPerformanceMiddleware())
+
 	// Cap request bodies on state-changing requests so a stolen session/API
 	// token or a buggy client can't force large allocations or long DB
 	// transactions via bulk create/attach/import endpoints. GET/HEAD/OPTIONS
@@ -249,6 +266,9 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 	g.GET("/panel/api/openapi.json", controller.ServeOpenAPISpec)
 	s.api = controller.NewAPIController(g)
 
+	// Wire IP access refresh function (avoids import cycle)
+	service.RefreshIPAccessFunc = middleware.RefreshIPAccess
+
 	// Initialize WebSocket hub
 	s.wsHub = websocket.NewHub()
 	go s.wsHub.Run()
@@ -263,6 +283,54 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 	engine.GET("/.well-known/appspecific/com.chrome.devtools.json", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{})
 	})
+
+	// Kubernetes health check endpoints (no auth required)
+	engine.GET("/healthz", func(c *gin.Context) {
+		hc := monitor.GlobalHealthChecker()
+		if hc == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not ready"})
+			return
+		}
+		results := hc.GetAllResults()
+		unhealthy := 0
+		for _, r := range results {
+			if !r.Healthy {
+				unhealthy++
+			}
+		}
+		if unhealthy > 0 {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"status":    "degraded",
+				"unhealthy": unhealthy,
+				"total":     len(results),
+			})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+	engine.GET("/readyz", func(c *gin.Context) {
+		db := database.GetDB()
+		if db == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "database not ready"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
+	// Prometheus metrics endpoint (no auth for monitoring systems)
+	engine.GET("/metrics", func(c *gin.Context) {
+		hc := monitor.GlobalHealthChecker()
+		mc := monitor.GlobalMetricsCollector()
+		if hc == nil || mc == nil {
+			c.String(http.StatusServiceUnavailable, "# monitoring not initialized\n")
+			return
+		}
+		exporter := monitor.NewPrometheusExporter(hc, mc)
+		exporter.ServeHTTP(c.Writer, c.Request)
+	})
+
+	// Performance optimization — profiling, metrics, cache, worker pools
+	performance.RegisterRoutes(engine)
 
 	// Add a catch-all route to handle undefined paths and return 404
 	engine.NoRoute(func(c *gin.Context) {
@@ -385,6 +453,12 @@ func (s *Server) startTask(restartXray bool) {
 	if s.cpuAlarmWanted() {
 		s.cron.AddJob(cadenceCPUAlarm, job.NewCheckCpuJob())
 	}
+
+	// Protocol health checks every 30 seconds
+	s.cron.AddJob("@every 30s", job.NewProtocolHealthJob())
+
+	// Protocol metrics collection every 60 seconds
+	s.cron.AddJob("@every 60s", job.NewMetricsCollectJob())
 }
 
 // cpuAlarmWanted reports whether any notifier is configured to receive cpu.high
@@ -574,6 +648,49 @@ func (s *Server) start(restartXray bool, startTgBot bool) (err error) {
 		return nil
 	})
 
+	// Phase 8: Initialize protocol ecosystem — register all 13 protocols
+	if err := xuiProtocol.InitGlobal(); err != nil {
+		logger.Warningf("protocol: global init failed: %v", err)
+	} else {
+		registered := xuiProtocol.Global().ListAll()
+		logger.Infof("protocol: initialized ecosystem with %d protocols", len(registered))
+	}
+
+	monitor.InitGlobal(xuiProtocol.Global(), servicemanager.Global())
+
+	// Phase 7: Initialize performance optimization infrastructure
+	perfCfg := performance.ConfigFromEnv()
+	performance.Initialize(perfCfg)
+	performance.StartPeriodicCleanup(perfCfg.CacheCleanupPeriod)
+	logger.Infof("performance: initialized (cache=%v pool=%d pprof=%v)",
+		perfCfg.CacheEnabled, perfCfg.WorkerPoolSize, perfCfg.PprofEnabled)
+
+	// Wire monitor notifiers to the rule engine. LogNotifier is already
+	// registered at init time; these add Telegram and Email channels.
+	re := monitor.GlobalRuleEngine()
+	if re != nil {
+		// Telegram notifier (registered regardless; uses factory at send-time)
+		re.RegisterNotifier(monitor.NewTelegramNotifier("tg-alert", "Telegram Admins"))
+		// Email notifier
+		re.RegisterNotifier(monitor.NewEmailNotifier("email-alert", "Email Notifier"))
+
+		// Set the factory so monitor notifiers can send through the real services.
+		// Capture s.tgbotService in a closure — it may not be running yet, but the
+		// factory will be called at send-time when it likely is.
+		monitor.SetNotifierFactory(&monitor.NotifierFactory{
+			TelegramFn: func(msg string) error {
+				if !s.tgbotService.IsRunning() {
+					return fmt.Errorf("telegram bot not running")
+				}
+				s.tgbotService.SendMsgToTgbotAdmins(msg)
+				return nil
+			},
+			EmailFn: func(subject, body string) error {
+				return emailService.Send(subject, body)
+			},
+		})
+	}
+
 	s.startTask(restartXray)
 
 	if startTgBot {
@@ -623,6 +740,9 @@ func (s *Server) stop(stopXray bool, stopTgBot bool) error {
 	if s.wsHub != nil {
 		s.wsHub.Stop()
 	}
+
+	// Phase 7: Shut down performance infrastructure
+	performance.Shutdown()
 	var err1 error
 	var err2 error
 	if s.httpServer != nil {

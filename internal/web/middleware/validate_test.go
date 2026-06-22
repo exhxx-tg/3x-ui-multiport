@@ -9,7 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/web/entity"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/entity"
 )
 
 type sampleBody struct {

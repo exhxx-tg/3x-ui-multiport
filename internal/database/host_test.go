@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database/model"
 )
 
 // hostColumns is the set of columns initModels must create for the hosts table.

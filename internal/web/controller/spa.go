@@ -3,9 +3,9 @@ package controller
 import (
 	"net/http"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/web/entity"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/middleware"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/session"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/entity"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/middleware"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/session"
 
 	"github.com/gin-gonic/gin"
 )

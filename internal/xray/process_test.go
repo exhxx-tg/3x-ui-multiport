@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	xuilogger "github.com/mhsanaei/3x-ui/v3/internal/logger"
+	xuilogger "github.com/exhxx-tg/3x-ui-multiport/internal/logger"
 	"github.com/op/go-logging"
 )
 

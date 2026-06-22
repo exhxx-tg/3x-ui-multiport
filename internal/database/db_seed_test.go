@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database/model"
 )
 
 func TestSeedClientsFromInboundJSON_IsIdempotentAgainstExistingClients(t *testing.T) {

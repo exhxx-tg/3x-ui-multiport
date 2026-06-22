@@ -14,12 +14,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/logger"
-	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/locale"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/middleware"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/network"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/logger"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/util/common"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/locale"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/middleware"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/network"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/service"
 
 	"github.com/gin-gonic/gin"
 )

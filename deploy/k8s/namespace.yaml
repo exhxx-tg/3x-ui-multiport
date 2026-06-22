@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: x-ui-pro
+  labels:
+    app.kubernetes.io/name: x-ui-pro
+    app.kubernetes.io/part-of: x-ui-pro

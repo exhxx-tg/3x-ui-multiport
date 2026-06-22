@@ -14,10 +14,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/config"
-	"github.com/mhsanaei/3x-ui/v3/internal/logger"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/global"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/config"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/logger"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/global"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/service"
 )
 
 // PanelService provides business logic for panel management operations.

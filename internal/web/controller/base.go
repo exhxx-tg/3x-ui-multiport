@@ -5,9 +5,9 @@ package controller
 import (
 	"net/http"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/logger"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/locale"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/session"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/logger"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/locale"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/session"
 
 	"github.com/gin-gonic/gin"
 )

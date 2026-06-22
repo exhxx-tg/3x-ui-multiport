@@ -29,6 +29,7 @@ import {
   SwapOutlined,
   TagsOutlined,
   TeamOutlined,
+  ThunderboltOutlined,
   ToolOutlined,
 } from '@ant-design/icons';
 
@@ -42,7 +43,7 @@ const DONATE_URL = 'https://donate.sanaei.dev/';
 const REPO_URL = 'https://github.com/MHSanaei/3x-ui';
 const LOGOUT_KEY = '__logout__';
 
-type IconName = 'dashboard' | 'inbound' | 'team' | 'groups' | 'setting' | 'tool' | 'cluster' | 'hosts' | 'logout' | 'apidocs' | 'outbound';
+type IconName = 'dashboard' | 'inbound' | 'team' | 'groups' | 'setting' | 'tool' | 'cluster' | 'hosts' | 'logout' | 'apidocs' | 'outbound' | 'protocols' | 'monitoring' | 'security';
 
 const iconByName: Record<IconName, ComponentType> = {
   dashboard: DashboardOutlined,
@@ -56,6 +57,9 @@ const iconByName: Record<IconName, ComponentType> = {
   logout: LogoutOutlined,
   apidocs: ApiOutlined,
   outbound: ExportOutlined,
+  protocols: ThunderboltOutlined,
+  monitoring: HeartOutlined,
+  security: SafetyOutlined,
 };
 
 function readCollapsed(): boolean {
@@ -138,6 +142,9 @@ export default function AppSidebar() {
   const tabs = useMemo<{ key: string; icon: IconName; title: string }[]>(() => [
     { key: '/', icon: 'dashboard', title: t('menu.dashboard') },
     { key: '/inbounds', icon: 'inbound', title: t('menu.inbounds') },
+    { key: '/protocols', icon: 'protocols', title: t('menu.protocols') },
+    { key: '/monitoring', icon: 'monitoring', title: 'Monitoring' },
+    { key: '/security', icon: 'security', title: 'Security' },
     { key: '/clients', icon: 'team', title: t('menu.clients') },
     { key: '/groups', icon: 'groups', title: t('menu.groups') },
     { key: '/nodes', icon: 'cluster', title: t('menu.nodes') },

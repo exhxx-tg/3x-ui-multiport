@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/logger"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/logger"
 )
 
 // NewErrorf creates a new error with formatted message.

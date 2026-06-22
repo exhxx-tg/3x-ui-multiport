@@ -5,7 +5,7 @@ import (
 	"encoding/pem"
 	"strings"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/util/common"
 )
 
 // NodeMtlsCaCert returns the PEM of this panel's node-auth CA certificate (the

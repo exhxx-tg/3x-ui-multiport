@@ -12,17 +12,21 @@ import (
 	"time"
 	_ "unsafe"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/config"
-	"github.com/mhsanaei/3x-ui/v3/internal/database"
-	"github.com/mhsanaei/3x-ui/v3/internal/logger"
-	"github.com/mhsanaei/3x-ui/v3/internal/sub"
-	"github.com/mhsanaei/3x-ui/v3/internal/util/crypto"
-	"github.com/mhsanaei/3x-ui/v3/internal/util/sys"
-	"github.com/mhsanaei/3x-ui/v3/internal/web"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/global"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/service/panel"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/service/tgbot"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/config"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/database"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/logger"
+	xuiProtocol "github.com/exhxx-tg/3x-ui-multiport/internal/protocol"
+	_ "github.com/exhxx-tg/3x-ui-multiport/internal/protocol/standalone"
+	_ "github.com/exhxx-tg/3x-ui-multiport/internal/protocol/wrapper"
+	_ "github.com/exhxx-tg/3x-ui-multiport/internal/protocol/xray"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/sub"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/util/crypto"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/util/sys"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/global"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/service"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/service/panel"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/web/service/tgbot"
 
 	"github.com/joho/godotenv"
 	"github.com/op/go-logging"
@@ -467,6 +471,17 @@ func loadServiceEnvFile() {
 	}
 }
 
+// runProtocolCommand initializes the protocol ecosystem and dispatches a CLI command.
+func runProtocolCommand(args []string) error {
+	if err := database.InitDB(config.GetDBPath()); err != nil {
+		return fmt.Errorf("database init: %w", err)
+	}
+	if err := xuiProtocol.InitGlobal(); err != nil {
+		return fmt.Errorf("protocol init: %w", err)
+	}
+	return xuiProtocol.RunCLICommand(args)
+}
+
 // main is the entry point of the 3x-ui application.
 // It parses command-line arguments to run the web server, migrate database, or update settings.
 func main() {
@@ -539,6 +554,7 @@ func main() {
 		fmt.Println("    migrate        migrate form other/old x-ui")
 		fmt.Println("    migrate-db     SQLite <-> .dump (--dump/--restore) or copy into PostgreSQL (--dsn)")
 		fmt.Println("    setting        set settings")
+		fmt.Println("    protocol       manage protocols (list, start, stop, restart, status, health)")
 	}
 
 	flag.Parse()
@@ -623,6 +639,11 @@ func main() {
 		}
 		if enabletgbot {
 			updateTgbotEnableSts(enabletgbot)
+		}
+	case "protocol":
+		if err := runProtocolCommand(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
 		}
 	case "cert":
 		err := settingCmd.Parse(os.Args[2:])

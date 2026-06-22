@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/util/json_util"
+	"github.com/exhxx-tg/3x-ui-multiport/internal/util/json_util"
 )
 
 // ---------------------------------------------------------------------------
