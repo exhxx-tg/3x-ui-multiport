@@ -3,30 +3,57 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./media/3x-ui-dark.png">
-    <img alt="3x-ui" src="./media/3x-ui-light.png">
+    <img alt="3x-ui-multiport" src="./media/3x-ui-light.png">
   </picture>
 </p>
 
 <p align="center">
-  <a href="https://github.com/MHSanaei/3x-ui/releases"><img src="https://img.shields.io/github/v/release/mhsanaei/3x-ui" alt="Release"></a>
-  <a href="https://github.com/MHSanaei/3x-ui/actions"><img src="https://img.shields.io/github/actions/workflow/status/mhsanaei/3x-ui/release.yml.svg" alt="Build"></a>
-  <a href="#"><img src="https://img.shields.io/github/go-mod/go-version/mhsanaei/3x-ui.svg" alt="GO Version"></a>
-  <a href="https://github.com/MHSanaei/3x-ui/releases/latest"><img src="https://img.shields.io/github/downloads/mhsanaei/3x-ui/total.svg" alt="Downloads"></a>
+  <a href="https://github.com/exhxx-tg/3x-ui-multiport/releases"><img src="https://img.shields.io/github/v/release/exhxx-tg/3x-ui-multiport" alt="Release"></a>
+  <a href="https://github.com/exhxx-tg/3x-ui-multiport/actions"><img src="https://img.shields.io/github/actions/workflow/status/exhxx-tg/3x-ui-multiport/release.yml.svg" alt="Build"></a>
+  <a href="#"><img src="https://img.shields.io/github/go-mod/go-version/exhxx-tg/3x-ui-multiport.svg" alt="GO Version"></a>
+  <a href="https://github.com/exhxx-tg/3x-ui-multiport/releases/latest"><img src="https://img.shields.io/github/downloads/exhxx-tg/3x-ui-multiport/total.svg" alt="Downloads"></a>
   <a href="https://www.gnu.org/licenses/gpl-3.0.en.html"><img src="https://img.shields.io/badge/license-GPL%20V3-blue.svg?longCache=true" alt="License"></a>
-  <a href="https://pkg.go.dev/github.com/mhsanaei/3x-ui/v3"><img src="https://pkg.go.dev/badge/github.com/mhsanaei/3x-ui/v3.svg" alt="Go Reference"></a>
-  <a href="https://goreportcard.com/report/github.com/mhsanaei/3x-ui/v3"><img src="https://goreportcard.com/badge/github.com/mhsanaei/3x-ui/v3" alt="Go Report Card"></a>
+  <a href="https://pkg.go.dev/github.com/exhxx-tg/3x-ui-multiport"><img src="https://pkg.go.dev/badge/github.com/exhxx-tg/3x-ui-multiport.svg" alt="Go Reference"></a>
+  <a href="https://goreportcard.com/report/github.com/exhxx-tg/3x-ui-multiport"><img src="https://goreportcard.com/badge/github.com/exhxx-tg/3x-ui-multiport" alt="Go Report Card"></a>
 </p>
 
-**3X-UI** is an advanced, open-source web control panel for managing [Xray-core](https://github.com/XTLS/Xray-core) servers. It provides a clean, multi-language interface for deploying, configuring, and monitoring a wide range of proxy and VPN protocols — from a single VPS to multi-node deployments.
+**3X-UI-Multiport (X-UI PRO)** is an advanced, open-source web control panel for managing a unified **13-Protocol Ecosystem** — combining [Xray-core](https://github.com/XTLS/Xray-core), standalone VPN services, and transport wrappers into a single management interface. It provides a clean, multi-language dashboard for deploying, configuring, monitoring, and securing proxy and VPN protocols — from a single VPS to multi-node deployments.
 
-Built as an enhanced fork of the original X-UI project, 3X-UI adds broader protocol support, improved stability, per-client traffic accounting, and many quality-of-life features.
+Built as a superset of the 3X-UI project, X-UI PRO adds 8 additional protocols, enterprise-grade security, comprehensive monitoring, and production-hardened DevOps tooling.
 
 > [!IMPORTANT]
 > This project is intended for personal use only. Please do not use it for illegal purposes or in a production environment.
 
+## 13 Protocol Ecosystem
+
+### 🔹 Base Protocols (Xray-native)
+| Protocol | Description | Source |
+|---|---|---|
+| **VMess** | Socks5-like proxy with encryption | Xray-core |
+| **VLESS** | Lightweight VMess — no encryption overhead | Xray-core |
+| **Trojan** | TLS-based protocol mimicking HTTPS | Xray-core |
+| **Shadowsocks** | Simple socks5 + stream cipher encryption | Xray-core |
+| **Hysteria** | UDP-based protocol — speed optimized | Xray-core |
+
+### 🔹 Standalone Services
+| Service | Description | Source |
+|---|---|---|
+| **OpenVPN** | Industry-standard VPN (TCP/UDP) | OpenVPN |
+| **WireGuard** | Modern kernel-based VPN | WireGuard |
+| **Dropbear** | Lightweight SSH server | Dropbear |
+
+### 🔹 Transport Wrappers
+| Wrapper | Description | Compatible With |
+|---|---|---|
+| **WebSocket** | HTTP WebSocket tunnel | VMess, VLESS, SS, Trojan |
+| **TLS/HTTPS** | TLS encrypted transport | VMess, VLESS, SS, Trojan |
+| **HTTP/2** | HTTP/2 multiplexed transport | VLESS, Trojan |
+| **gRPC** | gRPC protocol wrapping | VLESS, Trojan |
+| **Naive** | HTTP CONNECT tunnel | All base protocols |
+
 ## Features
 
-- **Multi-protocol inbounds** — VLESS, VMess, Trojan, Shadowsocks, WireGuard, Hysteria2, HTTP, SOCKS (Mixed), Dokodemo-door / Tunnel, and TUN.
+- **13 Protocol Ecosystem** — 5 Base (VMess, VLESS, Trojan, Shadowsocks, Hysteria) + 3 Standalone (OpenVPN, WireGuard, Dropbear) + 5 Transport Wrappers (WebSocket, TLS, HTTP/2, gRPC, Naive)
 - **Modern transports & security** — TCP (Raw), mKCP, WebSocket, gRPC, HTTPUpgrade, and XHTTP, secured with TLS, XTLS, and REALITY.
 - **Fallbacks** — serve multiple protocols on a single port (e.g. VLESS and Trojan on 443) using Xray's fallback support.
 - **Per-client management** — traffic quotas, expiry dates, IP limits, live online status, and one-click share links, QR codes, and subscriptions.
@@ -35,47 +62,51 @@ Built as an enhanced fork of the original X-UI project, 3X-UI adds broader proto
 - **Outbound & routing** — WARP, NordVPN, custom routing rules, load balancers, and outbound proxy chaining.
 - **Built-in subscription server** with multiple output formats and [custom page templates](docs/custom-subscription-templates.md).
 - **Telegram bot** for remote monitoring and management.
+- **Enterprise Security** — RBAC, 2FA, Audit Log, IP Access Control, Rate Limiting, API Tokens.
+- **Comprehensive Monitoring** — Health checks per protocol, metrics collection, alert rules, Prometheus exporter.
+- **Performance Optimizations** — Worker pools, in-memory caching, DB connection pooling, gzip compression.
+- **CLI Tool** — Full protocol management from terminal (start, stop, restart, status, health).
+- **Kubernetes Support** — Complete K8s manifests (deployment, service, ingress, HPA, PVC, configmap).
 - **RESTful API** with in-panel Swagger documentation.
 - **Flexible storage** — SQLite (default) or PostgreSQL.
 - **13 UI languages** with dark and light themes.
 - **Fail2ban integration** for enforcing per-client IP limits.
 
-## Screenshots
-
-<details>
-<summary>Click to expand</summary>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./media/01-overview-dark.png">
-  <img alt="Overview" src="./media/01-overview-light.png">
-</picture>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./media/02-add-inbound-dark.png">
-  <img alt="Inbounds" src="./media/02-add-inbound-light.png">
-</picture>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./media/03-add-client-dark.png">
-  <img alt="Add client" src="./media/03-add-client-light.png">
-</picture>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./media/05-add-nodes-dark.png">
-  <img alt="Configs" src="./media/05-add-nodes-light.png">
-</picture>
-
-</details>
-
 ## Quick Start
 
+### One-line Install (Bare Metal)
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/exhxx-tg/3x-ui-multiport/main/install.sh)
 ```
 
 During installation a random username, password, and access path are generated. After installation, run `x-ui` to open the management menu, where you can start/stop the service, view or reset your login credentials, manage SSL certificates, and more.
 
-For full documentation, please visit the [project Wiki](https://github.com/MHSanaei/3x-ui/wiki).
+### Docker (Recommended)
+```bash
+docker run -d \
+  --name x-ui \
+  --cap-add=NET_ADMIN \
+  --cap-add=NET_RAW \
+  -p 2053:2053 \
+  -v x-ui-db:/etc/x-ui \
+  ghcr.io/exhxx-tg/3x-ui-multiport:latest
+```
+
+Then open: `http://your-server-ip:2053`
+
+### Docker Compose
+```bash
+git clone https://github.com/exhxx-tg/3x-ui-multiport.git
+cd 3x-ui-multiport
+docker compose up -d
+```
+
+### Kubernetes
+```bash
+kubectl apply -k deploy/k8s/
+```
+
+For full documentation, please visit the [docs/](docs/) directory.
 
 ### Unattended install & cloud images
 
@@ -97,7 +128,7 @@ zero prompts, generating random credentials and writing them to
 
 ## Database Options
 
-3X-UI supports two backends, chosen during the install:
+X-UI PRO supports two backends, chosen during the install:
 
 - **SQLite** (default) — a single file at `/etc/x-ui/x-ui.db`. Zero setup, ideal for small and medium deployments.
 - **PostgreSQL** — recommended for high client counts or multi-node setups. The installer can install PostgreSQL locally for you, or accept a DSN to an existing server.
@@ -130,7 +161,7 @@ docker compose --profile postgres up -d
 The image bundles Fail2ban (enabled by default) to enforce per-client **IP limits**. Fail2ban bans offenders with `iptables`, which requires the `NET_ADMIN` capability. `docker-compose.yml` already grants it via `cap_add`; if you start the container with `docker run` instead, add the capabilities yourself, otherwise bans are logged but never applied:
 
 ```bash
-docker run -d --cap-add=NET_ADMIN --cap-add=NET_RAW ... ghcr.io/mhsanaei/3x-ui
+docker run -d --cap-add=NET_ADMIN --cap-add=NET_RAW ... ghcr.io/exhxx-tg/3x-ui-multiport
 ```
 
 ## Environment Variables
@@ -146,12 +177,36 @@ docker run -d --cap-add=NET_ADMIN --cap-add=NET_RAW ... ghcr.io/mhsanaei/3x-ui
 | `XUI_ENABLE_FAIL2BAN` | Enable Fail2ban-based IP-limit enforcement | `true` |
 | `XUI_LOG_LEVEL` | Log verbosity (`debug`, `info`, `warning`, `error`) | `info` |
 | `XUI_DEBUG` | Enable debug mode | `false` |
+| `XUI_WORKER_POOL` | Worker pool size for async jobs | `16` |
+| `XUI_CACHE_TTL_SEC` | Cache TTL in seconds | `30` |
+| `XUI_CACHE_DISABLE` | Disable in-memory caching | `false` |
 
 ## Supported Languages
 
 The panel UI is available in 13 languages:
 
 English · فارسی · العربية · 中文（简体） · 中文（繁體） · Español · Русский · Українська · Türkçe · Tiếng Việt · 日本語 · Bahasa Indonesia · Português (Brasil)
+
+## Documentation
+
+Full documentation is available in the [docs/](docs/) directory:
+
+- **Installation**: [Bare Metal](docs/installation/bare-metal.md), [Docker](docs/installation/docker.md), [Kubernetes](docs/installation/kubernetes.md)
+- **Configuration**: [Environment](docs/configuration/environment.md), [Security](docs/configuration/security.md)
+- **API**: [Security](docs/api/security.md), [Monitoring](docs/api/monitoring.md), [RBAC](docs/api/rbac.md), [Backup](docs/api/backup.md)
+- **Architecture**: [Phase 7 - Performance](docs/architecture/phase7-performance.md), [Phase 8 - Integration](docs/architecture/phase8-integration.md), [Phase 9 - Release](docs/architecture/phase9-release.md), [Phase 10 - Enterprise](docs/architecture/phase10-enterprise.md)
+- **Protocols**: [Ecosystem Overview](docs/protocols/ecosystem.md)
+
+## CLI Usage
+
+```
+x-ui run              Run web panel
+x-ui setting          Configure panel settings (port, user, TLS, Telegram)
+x-ui protocol         Manage 13-protocol ecosystem (list, start, stop, restart, status, health)
+x-ui migrate          Migrate from old x-ui
+x-ui migrate-db       SQLite <-> .dump / PostgreSQL migration
+x-ui cert             Manage SSL certificates
+```
 
 ## Contributing
 
@@ -160,6 +215,7 @@ Contributions are welcome. Please read the [Contributing Guide](/CONTRIBUTING.md
 ## A Special Thanks to
 
 - [alireza0](https://github.com/alireza0/)
+- [MHSanaei](https://github.com/MHSanaei/) — original 3X-UI project
 
 ## Acknowledgment
 
@@ -176,15 +232,6 @@ Tools and integrations built by the community around 3x-ui.
 
 **If this project is helpful to you, you may wish to give it a**:star2:
 
-<a href="https://www.buymeacoffee.com/MHSanaei" target="_blank">
-<img src="./media/default-yellow.png" alt="Buy Me A Coffee" style="height: 70px !important;width: 277px !important;" >
-</a>
-
-</br>
-<a href="https://nowpayments.io/donation/hsanaei" target="_blank" rel="noreferrer noopener">
-   <img src="./media/donation-button-black.svg" alt="Crypto donation button by NOWPayments">
-</a>
-
 ## Stargazers over Time
 
-[![Stargazers over time](https://starchart.cc/MHSanaei/3x-ui.svg?variant=adaptive)](https://starchart.cc/MHSanaei/3x-ui)
+[![Stargazers over time](https://starchart.cc/exhxx-tg/3x-ui-multiport.svg?variant=adaptive)](https://starchart.cc/exhxx-tg/3x-ui-multiport)
